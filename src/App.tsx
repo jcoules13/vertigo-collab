@@ -10,6 +10,7 @@ import PermanenceDetailPage from './pages/PermanenceDetailPage'
 import RendezVousPage from './pages/RendezVousPage'
 import RendezVousDetailPage from './pages/RendezVousDetailPage'
 import CollaborateursPage from './pages/CollaborateursPage'
+import ReservationsPage from './pages/ReservationsPage'
 import ProfilPage from './pages/ProfilPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,6 +62,7 @@ export default function App() {
               <Route path="permanences/:id" element={<PermanenceDetailPage />} />
               <Route path="rendez-vous" element={<RendezVousPage />} />
               <Route path="rendez-vous/:id" element={<RendezVousDetailPage />} />
+              <Route path="reservations" element={<ReservationsPage />} />
               <Route path="collaborateurs" element={<AdminRoute><CollaborateursPage /></AdminRoute>} />
               <Route path="profil" element={<ProfilPage />} />
             </Route>

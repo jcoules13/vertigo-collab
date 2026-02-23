@@ -80,6 +80,43 @@ export interface RdvParticipant {
   collaborateurs?: Collaborateur
 }
 
+export interface ReservationExterne {
+  id: string
+  usager_nom: string
+  usager_email: string | null
+  usager_telephone: string | null
+  canal: 'visio' | 'presentiel' | 'telephone' | 'autre'
+  titre: string
+  description: string | null
+  date: string
+  heure_debut: string
+  heure_fin: string
+  lieu: string | null
+  google_calendar_event_id: string
+  statut: 'nouvelle' | 'confirmee' | 'annulee' | 'terminee'
+  notes_admin: string | null
+  gere_par: string | null
+  synced_at: string
+  confirmed_at: string | null
+  cancelled_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export const CANAL_LABELS: Record<ReservationExterne['canal'], string> = {
+  visio: 'Visio',
+  presentiel: 'Présentiel',
+  telephone: 'Téléphone',
+  autre: 'Autre',
+}
+
+export const STATUT_RESERVATION_LABELS: Record<ReservationExterne['statut'], string> = {
+  nouvelle: 'Nouvelle',
+  confirmee: 'Confirmée',
+  annulee: 'Annulée',
+  terminee: 'Terminée',
+}
+
 export const JOURS_SEMAINE = [
   'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
 ] as const

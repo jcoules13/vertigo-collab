@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Clock, Calendar, User, Users,
+  LayoutDashboard, Clock, Calendar, CalendarPlus, User, Users,
   LogOut, Menu
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -11,6 +11,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Permanences', href: '/permanences', icon: Clock },
   { name: 'Rendez-vous', href: '/rendez-vous', icon: Calendar },
+  { name: 'Réservations', href: '/reservations', icon: CalendarPlus },
   { name: 'Profil', href: '/profil', icon: User },
 ]
 

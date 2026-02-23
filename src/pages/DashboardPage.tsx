@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, Calendar, AlertCircle, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { PermanenceOccurrence, RendezVous } from '../types/database'
+import { PermanenceOccurrence, RendezVous, ReservationExterne, STATUT_RESERVATION_LABELS, CANAL_LABELS } from '../types/database'
 import { format, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [myPermanences, setMyPermanences] = useState<PermanenceOccurrence[]>([])
   const [myRdvs, setMyRdvs] = useState<RendezVous[]>([])
+  const [reservations, setReservations] = useState<ReservationExterne[]>([])
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export default function DashboardPage() {
       const today = format(new Date(), 'yyyy-MM-dd')
       const nextWeek = format(addDays(new Date(), 7), 'yyyy-MM-dd')
 
-      const [permRes, rdvRes, pendingPermRes, pendingRdvRes] = await Promise.all([
+      const [permRes, rdvRes, pendingPermRes, pendingRdvRes, resExtRes] = await Promise.all([
         supabase
           .from('permanence_occurrences')
           .select('*, permanences(nom, lieu), permanence_assignments!inner(statut, collaborateur_id, collaborateurs(prenom, nom))')
@@ -47,10 +48,18 @@ export default function DashboardPage() {
           .select('id', { count: 'exact', head: true })
           .eq('collaborateur_id', collaborateur.id)
           .eq('statut', 'en_attente'),
+        supabase
+          .from('reservations_externes')
+          .select('*')
+          .gte('date', today)
+          .lte('date', nextWeek)
+          .in('statut', ['nouvelle', 'confirmee'])
+          .order('date', { ascending: true }),
       ])
 
       setMyPermanences(permRes.data || [])
       setMyRdvs(rdvRes.data || [])
+      setReservations(resExtRes.data || [])
       setPendingCount((pendingPermRes.count || 0) + (pendingRdvRes.count || 0))
       setLoading(false)
     }
@@ -69,6 +78,7 @@ export default function DashboardPage() {
   const stats = [
     { label: 'Permanences (7j)', value: myPermanences.length, icon: Clock, color: 'text-primary-600', bg: 'bg-primary-50 dark:bg-primary-900/20', href: '/permanences' },
     { label: 'Rendez-vous (7j)', value: myRdvs.length, icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20', href: '/rendez-vous' },
+    { label: 'Réservations (7j)', value: reservations.length, icon: CalendarPlus, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/20', href: '/reservations' },
     { label: 'En attente', value: pendingCount, icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-900/20', href: '/permanences' },
   ]
 
@@ -84,7 +94,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(stat => (
           <Link key={stat.label} to={stat.href} className="card hover:shadow-md transition-shadow">
             <div className="card-body flex items-center gap-4">
@@ -175,6 +185,46 @@ export default function DashboardPage() {
                   </Link>
                 )
               })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Prochaines réservations usagers */}
+      <div className="card">
+        <div className="card-header flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Réservations usagers</h2>
+          <Link to="/reservations" className="text-sm text-primary-600 hover:underline">Voir tout</Link>
+        </div>
+        <div className="card-body">
+          {reservations.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Aucune réservation cette semaine.</p>
+          ) : (
+            <div className="space-y-3">
+              {reservations.slice(0, 5).map(res => (
+                <Link
+                  key={res.id}
+                  to="/reservations"
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <CalendarPlus className="w-5 h-5 text-orange-600" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{res.usager_nom}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {format(new Date(res.date), 'EEEE d MMM', { locale: fr })} &middot; {res.heure_debut.slice(0, 5)} - {res.heure_fin.slice(0, 5)}
+                        {' '}&middot; {CANAL_LABELS[res.canal]}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    res.statut === 'nouvelle' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  }`}>
+                    {STATUT_RESERVATION_LABELS[res.statut]}
+                  </span>
+                </Link>
+              ))}
             </div>
           )}
         </div>
