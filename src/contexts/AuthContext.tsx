@@ -61,7 +61,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchCollaborateur(session.user.id)
+          try {
+            await fetchCollaborateur(session.user.id)
+          } catch (err) {
+            console.error('onAuthStateChange fetchCollaborateur error:', err)
+          }
         } else {
           setCollaborateur(null)
         }
@@ -77,8 +81,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setCollaborateur(null)
+    try {
+      await supabase.auth.signOut()
+    } catch (err) {
+      console.error('signOut error:', err)
+    } finally {
+      setUser(null)
+      setSession(null)
+      setCollaborateur(null)
+    }
   }
 
   const isAdmin = collaborateur?.role_asso === 'admin'

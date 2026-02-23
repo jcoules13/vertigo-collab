@@ -56,76 +56,90 @@ export default function PermanenceDetailPage() {
     const assignment = occurrence.permanence_assignments?.find(a => a.collaborateur_id === collaborateur.id)
     if (!assignment) return
 
-    await supabase
-      .from('permanence_assignments')
-      .update({ statut, confirme_at: new Date().toISOString() })
-      .eq('id', assignment.id)
-
-    // Sync to Google Calendar (non-blocking)
     try {
-      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
-      fetch(`${webhookUrl}/collab-gcal-sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'permanence',
-          occurrence_id: occurrence.id,
-          collaborateur_id: collaborateur.id,
-          statut,
-        }),
-      })
-    } catch {}
+      await supabase
+        .from('permanence_assignments')
+        .update({ statut, confirme_at: new Date().toISOString() })
+        .eq('id', assignment.id)
 
-    await fetchOccurrence()
+      try {
+        const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
+        fetch(`${webhookUrl}/collab-gcal-sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'permanence',
+            occurrence_id: occurrence.id,
+            collaborateur_id: collaborateur.id,
+            statut,
+          }),
+        })
+      } catch {}
+
+      await fetchOccurrence()
+    } catch (err) {
+      console.error('handleConfirm error:', err)
+    }
   }
 
   const handleAssign = async () => {
     if (!occurrence || selectedIds.length === 0) return
     setSaving(true)
+    try {
+      const existingIds = new Set(occurrence.permanence_assignments?.map(a => a.collaborateur_id) || [])
+      const newIds = selectedIds.filter(id => !existingIds.has(id))
 
-    const existingIds = new Set(occurrence.permanence_assignments?.map(a => a.collaborateur_id) || [])
-    const newIds = selectedIds.filter(id => !existingIds.has(id))
+      if (newIds.length > 0) {
+        await supabase.from('permanence_assignments').insert(
+          newIds.map(cid => ({ occurrence_id: occurrence.id, collaborateur_id: cid }))
+        )
 
-    if (newIds.length > 0) {
-      await supabase.from('permanence_assignments').insert(
-        newIds.map(cid => ({ occurrence_id: occurrence.id, collaborateur_id: cid }))
-      )
+        try {
+          const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
+          fetch(`${webhookUrl}/collab-permanence-assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              occurrence_id: occurrence.id,
+              collaborateur_ids: newIds,
+              date: occurrence.date,
+              heure_debut: occurrence.heure_debut,
+              heure_fin: occurrence.heure_fin,
+              permanence_nom: occurrence.permanences?.nom,
+              lieu: occurrence.permanences?.lieu,
+            }),
+          })
+        } catch {}
+      }
 
-      // Notify via n8n (non-blocking)
-      try {
-        const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
-        fetch(`${webhookUrl}/collab-permanence-assign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            occurrence_id: occurrence.id,
-            collaborateur_ids: newIds,
-            date: occurrence.date,
-            heure_debut: occurrence.heure_debut,
-            heure_fin: occurrence.heure_fin,
-            permanence_nom: occurrence.permanences?.nom,
-            lieu: occurrence.permanences?.lieu,
-          }),
-        })
-      } catch {}
+      setShowAssignForm(false)
+      setSelectedIds([])
+      await fetchOccurrence()
+    } catch (err) {
+      console.error('handleAssign error:', err)
+    } finally {
+      setSaving(false)
     }
-
-    setShowAssignForm(false)
-    setSelectedIds([])
-    setSaving(false)
-    await fetchOccurrence()
   }
 
   const removeAssignment = async (assignmentId: string) => {
     if (!confirm('Retirer cette personne de la permanence ?')) return
-    await supabase.from('permanence_assignments').delete().eq('id', assignmentId)
-    await fetchOccurrence()
+    try {
+      await supabase.from('permanence_assignments').delete().eq('id', assignmentId)
+      await fetchOccurrence()
+    } catch (err) {
+      console.error('removeAssignment error:', err)
+    }
   }
 
   const cancelOccurrence = async () => {
     if (!occurrence || !confirm('Annuler cette permanence ?')) return
-    await supabase.from('permanence_occurrences').update({ annulee: true }).eq('id', occurrence.id)
-    await fetchOccurrence()
+    try {
+      await supabase.from('permanence_occurrences').update({ annulee: true }).eq('id', occurrence.id)
+      await fetchOccurrence()
+    } catch (err) {
+      console.error('cancelOccurrence error:', err)
+    }
   }
 
   if (loading) {

@@ -107,11 +107,15 @@ export default function CollaborateursPage() {
   }
 
   const toggleActif = async (c: Collaborateur) => {
-    await supabase
-      .from('collaborateurs')
-      .update({ actif: !c.actif, updated_at: new Date().toISOString() })
-      .eq('id', c.id)
-    await fetchCollaborateurs()
+    try {
+      await supabase
+        .from('collaborateurs')
+        .update({ actif: !c.actif, updated_at: new Date().toISOString() })
+        .eq('id', c.id)
+      await fetchCollaborateurs()
+    } catch (err) {
+      console.error('toggleActif error:', err)
+    }
   }
 
   if (loading) {

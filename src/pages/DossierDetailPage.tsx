@@ -74,22 +74,30 @@ export default function DossierDetailPage() {
 
   const fetchSeances = async () => {
     if (!id) return
-    const { data } = await supabase
-      .from('seances')
-      .select('*, collaborateurs!redige_par(prenom, nom)')
-      .eq('dossier_id', id)
-      .order('date', { ascending: false })
-    setSeances(data || [])
+    try {
+      const { data } = await supabase
+        .from('seances')
+        .select('*, collaborateurs!redige_par(prenom, nom)')
+        .eq('dossier_id', id)
+        .order('date', { ascending: false })
+      setSeances(data || [])
+    } catch (err) {
+      console.error('fetchSeances error:', err)
+    }
   }
 
   const fetchLinkedReservations = async () => {
     if (!id) return
-    const { data } = await supabase
-      .from('dossier_reservations')
-      .select('*, reservations_externes(*)')
-      .eq('dossier_id', id)
-      .order('linked_at', { ascending: false })
-    setLinkedReservations((data || []) as any)
+    try {
+      const { data } = await supabase
+        .from('dossier_reservations')
+        .select('*, reservations_externes(*)')
+        .eq('dossier_id', id)
+        .order('linked_at', { ascending: false })
+      setLinkedReservations((data || []) as any)
+    } catch (err) {
+      console.error('fetchLinkedReservations error:', err)
+    }
   }
 
   useEffect(() => {
@@ -101,95 +109,122 @@ export default function DossierDetailPage() {
   const handleSaveInfo = async () => {
     if (!id || !editNom.trim()) return
     setSaving(true)
-    await supabase.from('dossiers_suivi').update({
-      usager_nom: editNom.trim(),
-      usager_email: editEmail.trim() || null,
-      usager_telephone: editTelephone.trim() || null,
-      motif: editMotif.trim() || null,
-      notes: editNotes.trim() || null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
-    setEditingInfo(false)
-    setSaving(false)
-    await fetchDossier()
+    try {
+      await supabase.from('dossiers_suivi').update({
+        usager_nom: editNom.trim(),
+        usager_email: editEmail.trim() || null,
+        usager_telephone: editTelephone.trim() || null,
+        motif: editMotif.trim() || null,
+        notes: editNotes.trim() || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id)
+      setEditingInfo(false)
+      await fetchDossier()
+    } catch (err) {
+      console.error('handleSaveInfo error:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleChangeStatut = async (newStatut: DossierSuivi['statut']) => {
     if (!id) return
-    await supabase.from('dossiers_suivi').update({
-      statut: newStatut,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
-    await fetchDossier()
+    try {
+      await supabase.from('dossiers_suivi').update({
+        statut: newStatut,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id)
+      await fetchDossier()
+    } catch (err) {
+      console.error('handleChangeStatut error:', err)
+    }
   }
 
   const handleAttribuer = async () => {
     if (!id || !collaborateur) return
-    await supabase.from('dossiers_suivi').update({
-      responsable_id: collaborateur.id,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
-    await fetchDossier()
+    try {
+      await supabase.from('dossiers_suivi').update({
+        responsable_id: collaborateur.id,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id)
+      await fetchDossier()
+    } catch (err) {
+      console.error('handleAttribuer error:', err)
+    }
   }
 
   const handleAddSeance = async () => {
     if (!id || !collaborateur || !seanceResume.trim()) return
     setSaving(true)
-    await supabase.from('seances').insert({
-      dossier_id: id,
-      date: seanceDate,
-      resume: seanceResume.trim(),
-      actions_prevues: seanceActions.trim() || null,
-      redige_par: collaborateur.id,
-    })
-    // Also update dossier updated_at and set en_cours if still ouvert
-    const updates: Record<string, any> = { updated_at: new Date().toISOString() }
-    if (dossier?.statut === 'ouvert') updates.statut = 'en_cours'
-    await supabase.from('dossiers_suivi').update(updates).eq('id', id)
-
-    setSeanceResume('')
-    setSeanceActions('')
-    setShowSeanceForm(false)
-    setSaving(false)
-    await fetchSeances()
-    await fetchDossier()
+    try {
+      await supabase.from('seances').insert({
+        dossier_id: id,
+        date: seanceDate,
+        resume: seanceResume.trim(),
+        actions_prevues: seanceActions.trim() || null,
+        redige_par: collaborateur.id,
+      })
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+      if (dossier?.statut === 'ouvert') updates.statut = 'en_cours'
+      await supabase.from('dossiers_suivi').update(updates).eq('id', id)
+      setSeanceResume('')
+      setSeanceActions('')
+      setShowSeanceForm(false)
+      await fetchSeances()
+      await fetchDossier()
+    } catch (err) {
+      console.error('handleAddSeance error:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleUpdateSeance = async (seanceId: string) => {
     if (!editSeanceResume.trim()) return
     setSaving(true)
-    await supabase.from('seances').update({
-      resume: editSeanceResume.trim(),
-      actions_prevues: editSeanceActions.trim() || null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', seanceId)
-    setEditingSeanceId(null)
-    setSaving(false)
-    await fetchSeances()
+    try {
+      await supabase.from('seances').update({
+        resume: editSeanceResume.trim(),
+        actions_prevues: editSeanceActions.trim() || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', seanceId)
+      setEditingSeanceId(null)
+      await fetchSeances()
+    } catch (err) {
+      console.error('handleUpdateSeance error:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleShowLinkForm = async () => {
     if (!dossier) return
-    // Fetch unlinked reservations matching the usager email
-    let query = supabase.from('reservations_externes').select('*').order('date', { ascending: false })
-    if (dossier.usager_email) {
-      query = query.eq('usager_email', dossier.usager_email)
+    try {
+      let query = supabase.from('reservations_externes').select('*').order('date', { ascending: false })
+      if (dossier.usager_email) {
+        query = query.eq('usager_email', dossier.usager_email)
+      }
+      const { data } = await query
+      const linkedIds = new Set(linkedReservations.map(lr => lr.reservation_id))
+      setAvailableReservations((data || []).filter(r => !linkedIds.has(r.id)))
+      setShowLinkForm(true)
+    } catch (err) {
+      console.error('handleShowLinkForm error:', err)
     }
-    const { data } = await query
-    // Filter out already linked
-    const linkedIds = new Set(linkedReservations.map(lr => lr.reservation_id))
-    setAvailableReservations((data || []).filter(r => !linkedIds.has(r.id)))
-    setShowLinkForm(true)
   }
 
   const handleLinkReservation = async (reservationId: string) => {
     if (!id) return
-    await supabase.from('dossier_reservations').insert({
-      dossier_id: id,
-      reservation_id: reservationId,
-    })
-    setShowLinkForm(false)
-    await fetchLinkedReservations()
+    try {
+      await supabase.from('dossier_reservations').insert({
+        dossier_id: id,
+        reservation_id: reservationId,
+      })
+      setShowLinkForm(false)
+      await fetchLinkedReservations()
+    } catch (err) {
+      console.error('handleLinkReservation error:', err)
+    }
   }
 
   if (loading) {

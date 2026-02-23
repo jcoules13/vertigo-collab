@@ -48,52 +48,69 @@ export default function RendezVousDetailPage() {
     const participant = rdv.rdv_participants?.find(p => p.collaborateur_id === collaborateur.id)
     if (!participant) return
 
-    await supabase
-      .from('rdv_participants')
-      .update({ statut, confirme_at: new Date().toISOString() })
-      .eq('id', participant.id)
-
     try {
-      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
-      fetch(`${webhookUrl}/collab-gcal-sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'rdv', rdv_id: rdv.id, collaborateur_id: collaborateur.id, statut }),
-      })
-    } catch {}
+      await supabase
+        .from('rdv_participants')
+        .update({ statut, confirme_at: new Date().toISOString() })
+        .eq('id', participant.id)
 
-    await fetchRdv()
+      try {
+        const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
+        fetch(`${webhookUrl}/collab-gcal-sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'rdv', rdv_id: rdv.id, collaborateur_id: collaborateur.id, statut }),
+        })
+      } catch {}
+
+      await fetchRdv()
+    } catch (err) {
+      console.error('handleConfirm error:', err)
+    }
   }
 
   const addParticipants = async () => {
     if (!rdv || selectedIds.length === 0) return
     setSaving(true)
 
-    const existingIds = new Set(rdv.rdv_participants?.map(p => p.collaborateur_id) || [])
-    const newIds = selectedIds.filter(id => !existingIds.has(id))
+    try {
+      const existingIds = new Set(rdv.rdv_participants?.map(p => p.collaborateur_id) || [])
+      const newIds = selectedIds.filter(id => !existingIds.has(id))
 
-    if (newIds.length > 0) {
-      await supabase.from('rdv_participants').insert(
-        newIds.map(cid => ({ rdv_id: rdv.id, collaborateur_id: cid }))
-      )
+      if (newIds.length > 0) {
+        await supabase.from('rdv_participants').insert(
+          newIds.map(cid => ({ rdv_id: rdv.id, collaborateur_id: cid }))
+        )
+      }
+
+      setShowAddForm(false)
+      setSelectedIds([])
+      await fetchRdv()
+    } catch (err) {
+      console.error('addParticipants error:', err)
+    } finally {
+      setSaving(false)
     }
-
-    setShowAddForm(false)
-    setSelectedIds([])
-    setSaving(false)
-    await fetchRdv()
   }
 
   const removeParticipant = async (participantId: string) => {
     if (!confirm('Retirer ce participant ?')) return
-    await supabase.from('rdv_participants').delete().eq('id', participantId)
-    await fetchRdv()
+    try {
+      await supabase.from('rdv_participants').delete().eq('id', participantId)
+      await fetchRdv()
+    } catch (err) {
+      console.error('removeParticipant error:', err)
+    }
   }
 
   const deleteRdv = async () => {
     if (!confirm('Supprimer ce rendez-vous ?')) return
-    await supabase.from('rendez_vous').delete().eq('id', id)
-    navigate('/rendez-vous')
+    try {
+      await supabase.from('rendez_vous').delete().eq('id', id)
+      navigate('/rendez-vous')
+    } catch (err) {
+      console.error('deleteRdv error:', err)
+    }
   }
 
   if (loading) {

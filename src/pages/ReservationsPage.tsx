@@ -169,14 +169,19 @@ export default function ReservationsPage() {
     if (!notesEdit || !collaborateur) return
     setActionLoading(notesEdit.id)
 
-    await supabase
-      .from('reservations_externes')
-      .update({ notes_admin: notesEdit.notes, gere_par: collaborateur.id, updated_at: new Date().toISOString() })
-      .eq('id', notesEdit.id)
+    try {
+      await supabase
+        .from('reservations_externes')
+        .update({ notes_admin: notesEdit.notes, gere_par: collaborateur.id, updated_at: new Date().toISOString() })
+        .eq('id', notesEdit.id)
 
-    setNotesEdit(null)
-    await fetchReservations()
-    setActionLoading(null)
+      setNotesEdit(null)
+      await fetchReservations()
+    } catch (err) {
+      console.error('handleSaveNotes error:', err)
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   if (loading) {

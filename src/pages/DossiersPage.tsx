@@ -59,22 +59,27 @@ export default function DossiersPage() {
     if (!collaborateur || !formNom.trim()) return
     setSaving(true)
 
-    await supabase.from('dossiers_suivi').insert({
-      usager_nom: formNom.trim(),
-      usager_email: formEmail.trim() || null,
-      usager_telephone: formTelephone.trim() || null,
-      motif: formMotif.trim() || null,
-      cree_par: collaborateur.id,
-      responsable_id: collaborateur.id,
-    })
+    try {
+      await supabase.from('dossiers_suivi').insert({
+        usager_nom: formNom.trim(),
+        usager_email: formEmail.trim() || null,
+        usager_telephone: formTelephone.trim() || null,
+        motif: formMotif.trim() || null,
+        cree_par: collaborateur.id,
+        responsable_id: collaborateur.id,
+      })
 
-    setFormNom('')
-    setFormEmail('')
-    setFormTelephone('')
-    setFormMotif('')
-    setShowForm(false)
-    setSaving(false)
-    await fetchDossiers()
+      setFormNom('')
+      setFormEmail('')
+      setFormTelephone('')
+      setFormMotif('')
+      setShowForm(false)
+      await fetchDossiers()
+    } catch (err) {
+      console.error('handleCreate error:', err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading) {

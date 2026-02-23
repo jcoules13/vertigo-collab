@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { User, Save, Loader2, Lock } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -12,6 +12,14 @@ export default function ProfilPage() {
   const [nom, setNom] = useState(collaborateur?.nom || '')
   const [prenom, setPrenom] = useState(collaborateur?.prenom || '')
   const [telephone, setTelephone] = useState(collaborateur?.telephone || '')
+
+  useEffect(() => {
+    if (collaborateur) {
+      setNom(collaborateur.nom)
+      setPrenom(collaborateur.prenom)
+      setTelephone(collaborateur.telephone || '')
+    }
+  }, [collaborateur])
 
   const [newPassword, setNewPassword] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')

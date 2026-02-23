@@ -26,7 +26,11 @@ export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleSignOut = async () => {
-    await signOut()
+    try {
+      await signOut()
+    } catch (err) {
+      console.error('handleSignOut error:', err)
+    }
     navigate('/login')
   }
 

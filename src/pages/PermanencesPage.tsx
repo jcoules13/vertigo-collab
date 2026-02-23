@@ -82,67 +82,81 @@ export default function PermanencesPage() {
   const handleSaveDef = async (e: React.FormEvent) => {
     e.preventDefault()
     setSavingDef(true)
-    const data = { nom: defNom, lieu: defLieu, jour_semaine: defJour, heure_debut: defDebut, heure_fin: defFin }
+    try {
+      const data = { nom: defNom, lieu: defLieu, jour_semaine: defJour, heure_debut: defDebut, heure_fin: defFin }
 
-    if (editingDef) {
-      await supabase.from('permanences').update({ ...data, updated_at: new Date().toISOString() }).eq('id', editingDef.id)
-    } else {
-      await supabase.from('permanences').insert(data)
+      if (editingDef) {
+        await supabase.from('permanences').update({ ...data, updated_at: new Date().toISOString() }).eq('id', editingDef.id)
+      } else {
+        await supabase.from('permanences').insert(data)
+      }
+
+      await fetchAll()
+      resetDefForm()
+    } catch (err) {
+      console.error('handleSaveDef error:', err)
+    } finally {
+      setSavingDef(false)
     }
-
-    await fetchAll()
-    resetDefForm()
-    setSavingDef(false)
   }
 
   const deleteDef = async (id: string) => {
     if (!confirm('Supprimer cette définition de permanence ?')) return
-    await supabase.from('permanences').delete().eq('id', id)
-    await fetchAll()
+    try {
+      await supabase.from('permanences').delete().eq('id', id)
+      await fetchAll()
+    } catch (err) {
+      console.error('deleteDef error:', err)
+    }
   }
 
   const generateOccurrences = async () => {
     if (!permanences.length) return
     setGenerating(true)
 
-    const today = new Date()
-    const inserts: { permanence_id: string; date: string; heure_debut: string; heure_fin: string }[] = []
+    try {
+      const today = new Date()
+      const inserts: { permanence_id: string; date: string; heure_debut: string; heure_fin: string }[] = []
 
-    for (const perm of permanences.filter(p => p.actif)) {
-      const currentDay = (today.getDay() + 6) % 7 // Mon=0
-      let daysUntil = perm.jour_semaine - currentDay
-      if (daysUntil <= 0) daysUntil += 7
+      for (const perm of permanences.filter(p => p.actif)) {
+        const currentDay = (today.getDay() + 6) % 7 // Mon=0
+        let daysUntil = perm.jour_semaine - currentDay
+        if (daysUntil <= 0) daysUntil += 7
 
-      for (let w = 0; w < genWeeks; w++) {
-        const date = addDays(today, daysUntil + w * 7)
-        inserts.push({
-          permanence_id: perm.id,
-          date: format(date, 'yyyy-MM-dd'),
-          heure_debut: perm.heure_debut,
-          heure_fin: perm.heure_fin,
-        })
+        for (let w = 0; w < genWeeks; w++) {
+          const date = addDays(today, daysUntil + w * 7)
+          inserts.push({
+            permanence_id: perm.id,
+            date: format(date, 'yyyy-MM-dd'),
+            heure_debut: perm.heure_debut,
+            heure_fin: perm.heure_fin,
+          })
+        }
       }
+
+      // Upsert — avoid duplicates by checking existing
+      const existingRes = await supabase
+        .from('permanence_occurrences')
+        .select('permanence_id, date')
+        .in('permanence_id', inserts.map(i => i.permanence_id))
+        .in('date', [...new Set(inserts.map(i => i.date))])
+
+      const existingKeys = new Set(
+        (existingRes.data || []).map(e => `${e.permanence_id}_${e.date}`)
+      )
+
+      const newInserts = inserts.filter(i => !existingKeys.has(`${i.permanence_id}_${i.date}`))
+
+      if (newInserts.length > 0) {
+        await supabase.from('permanence_occurrences').insert(newInserts)
+      }
+
+      await fetchAll()
+    } catch (err) {
+      console.error('generateOccurrences error:', err)
+    } finally {
+      setGenerating(false)
     }
-
-    // Upsert — avoid duplicates by checking existing
-    const existingRes = await supabase
-      .from('permanence_occurrences')
-      .select('permanence_id, date')
-      .in('permanence_id', inserts.map(i => i.permanence_id))
-      .in('date', [...new Set(inserts.map(i => i.date))])
-
-    const existingKeys = new Set(
-      (existingRes.data || []).map(e => `${e.permanence_id}_${e.date}`)
-    )
-
-    const newInserts = inserts.filter(i => !existingKeys.has(`${i.permanence_id}_${i.date}`))
-
-    if (newInserts.length > 0) {
-      await supabase.from('permanence_occurrences').insert(newInserts)
-    }
-
-    await fetchAll()
-    setGenerating(false)
   }
 
   const weekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 })
