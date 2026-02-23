@@ -27,18 +27,23 @@ export default function RendezVousPage() {
   const [formParticipants, setFormParticipants] = useState<string[]>([])
 
   const fetchRdvs = async () => {
-    const today = format(new Date(), 'yyyy-MM-dd')
-    let query = supabase
-      .from('rendez_vous')
-      .select('*, rdv_participants(id, statut, collaborateur_id, collaborateurs(id, prenom, nom))')
-      .order('date', { ascending: true })
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      let query = supabase
+        .from('rendez_vous')
+        .select('*, rdv_participants(id, statut, collaborateur_id, collaborateurs(id, prenom, nom))')
+        .order('date', { ascending: true })
 
-    if (filter === 'avenir') query = query.gte('date', today)
-    if (filter === 'passes') query = query.lt('date', today)
+      if (filter === 'avenir') query = query.gte('date', today)
+      if (filter === 'passes') query = query.lt('date', today)
 
-    const { data } = await query
-    setRdvs(data || [])
-    setLoading(false)
+      const { data } = await query
+      setRdvs(data || [])
+    } catch (err) {
+      console.error('RendezVousPage fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const fetchCollaborateurs = async () => {

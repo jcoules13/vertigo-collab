@@ -23,13 +23,18 @@ export default function PermanenceDetailPage() {
 
   const fetchOccurrence = async () => {
     if (!id) return
-    const { data } = await supabase
-      .from('permanence_occurrences')
-      .select('*, permanences(nom, lieu), permanence_assignments(id, statut, collaborateur_id, notifie_at, confirme_at, collaborateurs(id, prenom, nom, email))')
-      .eq('id', id)
-      .single()
-    setOccurrence(data)
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('permanence_occurrences')
+        .select('*, permanences(nom, lieu), permanence_assignments(id, statut, collaborateur_id, notifie_at, confirme_at, collaborateurs(id, prenom, nom, email))')
+        .eq('id', id)
+        .single()
+      setOccurrence(data)
+    } catch (err) {
+      console.error('PermanenceDetailPage fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const fetchCollaborateurs = async () => {

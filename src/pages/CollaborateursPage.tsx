@@ -21,12 +21,17 @@ export default function CollaborateursPage() {
   const [formPassword, setFormPassword] = useState('')
 
   const fetchCollaborateurs = async () => {
-    const { data } = await supabase
-      .from('collaborateurs')
-      .select('*')
-      .order('nom', { ascending: true })
-    setCollaborateurs(data || [])
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('collaborateurs')
+        .select('*')
+        .order('nom', { ascending: true })
+      setCollaborateurs(data || [])
+    } catch (err) {
+      console.error('CollaborateursPage fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchCollaborateurs() }, [])
@@ -89,7 +94,7 @@ export default function CollaborateursPage() {
           }),
         })
         const result = await res.json()
-        if (!res.ok) throw new Error(result.error || 'Erreur lors de la création')
+        if (!res.ok || result.success === false) throw new Error(result.error || 'Erreur lors de la création')
       }
 
       await fetchCollaborateurs()

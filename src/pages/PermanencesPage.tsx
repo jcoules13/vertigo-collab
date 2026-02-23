@@ -35,21 +35,26 @@ export default function PermanencesPage() {
   const [weekOffset, setWeekOffset] = useState(0)
 
   const fetchAll = async () => {
-    const weekStart = format(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-    const weekEnd = format(endOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    try {
+      const weekStart = format(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+      const weekEnd = format(endOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }), 'yyyy-MM-dd')
 
-    const [defRes, occRes] = await Promise.all([
-      supabase.from('permanences').select('*').order('jour_semaine'),
-      supabase
-        .from('permanence_occurrences')
-        .select('*, permanences(nom, lieu), permanence_assignments(id, statut, collaborateur_id, collaborateurs(id, prenom, nom))')
-        .gte('date', weekStart)
-        .lte('date', weekEnd)
-        .order('date', { ascending: true }),
-    ])
-    setPermanences(defRes.data || [])
-    setOccurrences(occRes.data || [])
-    setLoading(false)
+      const [defRes, occRes] = await Promise.all([
+        supabase.from('permanences').select('*').order('jour_semaine'),
+        supabase
+          .from('permanence_occurrences')
+          .select('*, permanences(nom, lieu), permanence_assignments(id, statut, collaborateur_id, collaborateurs(id, prenom, nom))')
+          .gte('date', weekStart)
+          .lte('date', weekEnd)
+          .order('date', { ascending: true }),
+      ])
+      setPermanences(defRes.data || [])
+      setOccurrences(occRes.data || [])
+    } catch (err) {
+      console.error('PermanencesPage fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchAll() }, [weekOffset])

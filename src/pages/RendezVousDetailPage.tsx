@@ -23,13 +23,18 @@ export default function RendezVousDetailPage() {
 
   const fetchRdv = async () => {
     if (!id) return
-    const { data } = await supabase
-      .from('rendez_vous')
-      .select('*, collaborateurs:cree_par(prenom, nom), rdv_participants(id, statut, collaborateur_id, notifie_at, confirme_at, collaborateurs(id, prenom, nom, email))')
-      .eq('id', id)
-      .single()
-    setRdv(data)
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('rendez_vous')
+        .select('*, collaborateurs:cree_par(prenom, nom), rdv_participants(id, statut, collaborateur_id, notifie_at, confirme_at, collaborateurs(id, prenom, nom, email))')
+        .eq('id', id)
+        .single()
+      setRdv(data)
+    } catch (err) {
+      console.error('RendezVousDetailPage fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
