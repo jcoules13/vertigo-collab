@@ -31,21 +31,26 @@ export default function DossiersPage() {
   const fetchDossiers = async () => {
     if (!collaborateur) return
 
-    let query = supabase
-      .from('dossiers_suivi')
-      .select('*, collaborateurs!cree_par(prenom, nom), responsable:collaborateurs!responsable_id(prenom, nom), seances(id)')
-      .order('updated_at', { ascending: false })
+    try {
+      let query = supabase
+        .from('dossiers_suivi')
+        .select('*, collaborateurs!cree_par(prenom, nom), responsable:collaborateurs!responsable_id(prenom, nom), seances(id)')
+        .order('updated_at', { ascending: false })
 
-    if (statutFilter !== 'tous') query = query.eq('statut', statutFilter)
-    if (mesDossiers) query = query.eq('responsable_id', collaborateur.id)
+      if (statutFilter !== 'tous') query = query.eq('statut', statutFilter)
+      if (mesDossiers) query = query.eq('responsable_id', collaborateur.id)
 
-    const { data } = await query
-    const mapped = (data || []).map((d: any) => ({
-      ...d,
-      seances_count: d.seances?.length || 0,
-    }))
-    setDossiers(mapped)
-    setLoading(false)
+      const { data } = await query
+      const mapped = (data || []).map((d: any) => ({
+        ...d,
+        seances_count: d.seances?.length || 0,
+      }))
+      setDossiers(mapped)
+    } catch (err) {
+      console.error('DossiersPage fetchDossiers error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchDossiers() }, [statutFilter, mesDossiers, collaborateur])

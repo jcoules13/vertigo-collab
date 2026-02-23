@@ -37,19 +37,24 @@ export default function ReservationsPage() {
   const [notesEdit, setNotesEdit] = useState<{ id: string; notes: string } | null>(null)
 
   const fetchReservations = async () => {
-    const today = format(new Date(), 'yyyy-MM-dd')
-    let query = supabase
-      .from('reservations_externes')
-      .select('*, collaborateurs!gere_par(prenom, nom), dossier_reservations(dossier_id)')
-      .order('date', { ascending: true })
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      let query = supabase
+        .from('reservations_externes')
+        .select('*, collaborateurs!gere_par(prenom, nom), dossier_reservations(dossier_id)')
+        .order('date', { ascending: true })
 
-    if (filter === 'avenir') query = query.gte('date', today)
-    if (filter === 'passes') query = query.lt('date', today)
-    if (statutFilter !== 'tous') query = query.eq('statut', statutFilter)
+      if (filter === 'avenir') query = query.gte('date', today)
+      if (filter === 'passes') query = query.lt('date', today)
+      if (statutFilter !== 'tous') query = query.eq('statut', statutFilter)
 
-    const { data } = await query
-    setReservations((data || []) as ReservationWithGerePar[])
-    setLoading(false)
+      const { data } = await query
+      setReservations((data || []) as ReservationWithGerePar[])
+    } catch (err) {
+      console.error('ReservationsPage fetchReservations error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchReservations() }, [filter, statutFilter])

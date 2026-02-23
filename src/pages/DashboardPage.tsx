@@ -21,63 +21,68 @@ export default function DashboardPage() {
     if (!collaborateur) return
 
     const fetchData = async () => {
-      const today = format(new Date(), 'yyyy-MM-dd')
-      const nextWeek = format(addDays(new Date(), 7), 'yyyy-MM-dd')
+      try {
+        const today = format(new Date(), 'yyyy-MM-dd')
+        const nextWeek = format(addDays(new Date(), 7), 'yyyy-MM-dd')
 
-      const [permRes, rdvRes, pendingPermRes, pendingRdvRes, resExtRes, dossierCountRes, dossierRecentRes] = await Promise.all([
-        supabase
-          .from('permanence_occurrences')
-          .select('*, permanences(nom, lieu), permanence_assignments!inner(statut, collaborateur_id, collaborateurs(prenom, nom))')
-          .gte('date', today)
-          .lte('date', nextWeek)
-          .eq('annulee', false)
-          .eq('permanence_assignments.collaborateur_id', collaborateur.id)
-          .order('date', { ascending: true }),
-        supabase
-          .from('rendez_vous')
-          .select('*, rdv_participants!inner(statut, collaborateur_id, collaborateurs(prenom, nom))')
-          .gte('date', today)
-          .lte('date', nextWeek)
-          .eq('rdv_participants.collaborateur_id', collaborateur.id)
-          .order('date', { ascending: true }),
-        supabase
-          .from('permanence_assignments')
-          .select('id', { count: 'exact', head: true })
-          .eq('collaborateur_id', collaborateur.id)
-          .eq('statut', 'en_attente'),
-        supabase
-          .from('rdv_participants')
-          .select('id', { count: 'exact', head: true })
-          .eq('collaborateur_id', collaborateur.id)
-          .eq('statut', 'en_attente'),
-        supabase
-          .from('reservations_externes')
-          .select('*')
-          .gte('date', today)
-          .lte('date', nextWeek)
-          .in('statut', ['nouvelle', 'confirmee'])
-          .order('date', { ascending: true }),
-        supabase
-          .from('dossiers_suivi')
-          .select('id', { count: 'exact', head: true })
-          .eq('responsable_id', collaborateur.id)
-          .neq('statut', 'clos'),
-        supabase
-          .from('dossiers_suivi')
-          .select('*, responsable:collaborateurs!responsable_id(prenom, nom)')
-          .eq('responsable_id', collaborateur.id)
-          .neq('statut', 'clos')
-          .order('updated_at', { ascending: false })
-          .limit(5),
-      ])
+        const [permRes, rdvRes, pendingPermRes, pendingRdvRes, resExtRes, dossierCountRes, dossierRecentRes] = await Promise.all([
+          supabase
+            .from('permanence_occurrences')
+            .select('*, permanences(nom, lieu), permanence_assignments!inner(statut, collaborateur_id, collaborateurs(prenom, nom))')
+            .gte('date', today)
+            .lte('date', nextWeek)
+            .eq('annulee', false)
+            .eq('permanence_assignments.collaborateur_id', collaborateur.id)
+            .order('date', { ascending: true }),
+          supabase
+            .from('rendez_vous')
+            .select('*, rdv_participants!inner(statut, collaborateur_id, collaborateurs(prenom, nom))')
+            .gte('date', today)
+            .lte('date', nextWeek)
+            .eq('rdv_participants.collaborateur_id', collaborateur.id)
+            .order('date', { ascending: true }),
+          supabase
+            .from('permanence_assignments')
+            .select('id', { count: 'exact', head: true })
+            .eq('collaborateur_id', collaborateur.id)
+            .eq('statut', 'en_attente'),
+          supabase
+            .from('rdv_participants')
+            .select('id', { count: 'exact', head: true })
+            .eq('collaborateur_id', collaborateur.id)
+            .eq('statut', 'en_attente'),
+          supabase
+            .from('reservations_externes')
+            .select('*')
+            .gte('date', today)
+            .lte('date', nextWeek)
+            .in('statut', ['nouvelle', 'confirmee'])
+            .order('date', { ascending: true }),
+          supabase
+            .from('dossiers_suivi')
+            .select('id', { count: 'exact', head: true })
+            .eq('responsable_id', collaborateur.id)
+            .neq('statut', 'clos'),
+          supabase
+            .from('dossiers_suivi')
+            .select('*, responsable:collaborateurs!responsable_id(prenom, nom)')
+            .eq('responsable_id', collaborateur.id)
+            .neq('statut', 'clos')
+            .order('updated_at', { ascending: false })
+            .limit(5),
+        ])
 
-      setMyPermanences(permRes.data || [])
-      setMyRdvs(rdvRes.data || [])
-      setReservations(resExtRes.data || [])
-      setPendingCount((pendingPermRes.count || 0) + (pendingRdvRes.count || 0))
-      setMyDossiersCount(dossierCountRes.count || 0)
-      setMyDossiers(dossierRecentRes.data || [])
-      setLoading(false)
+        setMyPermanences(permRes.data || [])
+        setMyRdvs(rdvRes.data || [])
+        setReservations(resExtRes.data || [])
+        setPendingCount((pendingPermRes.count || 0) + (pendingRdvRes.count || 0))
+        setMyDossiersCount(dossierCountRes.count || 0)
+        setMyDossiers(dossierRecentRes.data || [])
+      } catch (err) {
+        console.error('DashboardPage fetchData error:', err)
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchData()

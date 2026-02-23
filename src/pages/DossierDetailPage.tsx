@@ -51,20 +51,25 @@ export default function DossierDetailPage() {
 
   const fetchDossier = async () => {
     if (!id) return
-    const { data } = await supabase
-      .from('dossiers_suivi')
-      .select('*, collaborateurs!cree_par(prenom, nom), responsable:collaborateurs!responsable_id(id, prenom, nom)')
-      .eq('id', id)
-      .single()
-    setDossier(data)
-    if (data) {
-      setEditNom(data.usager_nom)
-      setEditEmail(data.usager_email || '')
-      setEditTelephone(data.usager_telephone || '')
-      setEditMotif(data.motif || '')
-      setEditNotes(data.notes || '')
+    try {
+      const { data } = await supabase
+        .from('dossiers_suivi')
+        .select('*, collaborateurs!cree_par(prenom, nom), responsable:collaborateurs!responsable_id(id, prenom, nom)')
+        .eq('id', id)
+        .single()
+      setDossier(data)
+      if (data) {
+        setEditNom(data.usager_nom)
+        setEditEmail(data.usager_email || '')
+        setEditTelephone(data.usager_telephone || '')
+        setEditMotif(data.motif || '')
+        setEditNotes(data.notes || '')
+      }
+    } catch (err) {
+      console.error('DossierDetailPage fetchDossier error:', err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const fetchSeances = async () => {
