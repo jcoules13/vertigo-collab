@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle, FolderOpen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { PermanenceOccurrence, RendezVous, ReservationExterne, STATUT_RESERVATION_LABELS, CANAL_LABELS } from '../types/database'
+import { PermanenceOccurrence, RendezVous, ReservationExterne, DossierSuivi, STATUT_RESERVATION_LABELS, CANAL_LABELS, STATUT_DOSSIER_LABELS } from '../types/database'
 import { format, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -14,6 +14,8 @@ export default function DashboardPage() {
   const [myRdvs, setMyRdvs] = useState<RendezVous[]>([])
   const [reservations, setReservations] = useState<ReservationExterne[]>([])
   const [pendingCount, setPendingCount] = useState(0)
+  const [myDossiersCount, setMyDossiersCount] = useState(0)
+  const [myDossiers, setMyDossiers] = useState<DossierSuivi[]>([])
 
   useEffect(() => {
     if (!collaborateur) return
@@ -22,7 +24,7 @@ export default function DashboardPage() {
       const today = format(new Date(), 'yyyy-MM-dd')
       const nextWeek = format(addDays(new Date(), 7), 'yyyy-MM-dd')
 
-      const [permRes, rdvRes, pendingPermRes, pendingRdvRes, resExtRes] = await Promise.all([
+      const [permRes, rdvRes, pendingPermRes, pendingRdvRes, resExtRes, dossierCountRes, dossierRecentRes] = await Promise.all([
         supabase
           .from('permanence_occurrences')
           .select('*, permanences(nom, lieu), permanence_assignments!inner(statut, collaborateur_id, collaborateurs(prenom, nom))')
@@ -55,12 +57,26 @@ export default function DashboardPage() {
           .lte('date', nextWeek)
           .in('statut', ['nouvelle', 'confirmee'])
           .order('date', { ascending: true }),
+        supabase
+          .from('dossiers_suivi')
+          .select('id', { count: 'exact', head: true })
+          .eq('responsable_id', collaborateur.id)
+          .neq('statut', 'clos'),
+        supabase
+          .from('dossiers_suivi')
+          .select('*, responsable:collaborateurs!responsable_id(prenom, nom)')
+          .eq('responsable_id', collaborateur.id)
+          .neq('statut', 'clos')
+          .order('updated_at', { ascending: false })
+          .limit(5),
       ])
 
       setMyPermanences(permRes.data || [])
       setMyRdvs(rdvRes.data || [])
       setReservations(resExtRes.data || [])
       setPendingCount((pendingPermRes.count || 0) + (pendingRdvRes.count || 0))
+      setMyDossiersCount(dossierCountRes.count || 0)
+      setMyDossiers(dossierRecentRes.data || [])
       setLoading(false)
     }
 
@@ -80,6 +96,7 @@ export default function DashboardPage() {
     { label: 'Rendez-vous (7j)', value: myRdvs.length, icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20', href: '/rendez-vous' },
     { label: 'Réservations (7j)', value: reservations.length, icon: CalendarPlus, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/20', href: '/reservations' },
     { label: 'En attente', value: pendingCount, icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-900/20', href: '/permanences' },
+    { label: 'Mes dossiers', value: myDossiersCount, icon: FolderOpen, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-900/20', href: '/dossiers' },
   ]
 
   return (
@@ -94,7 +111,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map(stat => (
           <Link key={stat.label} to={stat.href} className="card hover:shadow-md transition-shadow">
             <div className="card-body flex items-center gap-4">
@@ -222,6 +239,44 @@ export default function DashboardPage() {
                     : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                   }`}>
                     {STATUT_RESERVATION_LABELS[res.statut]}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {/* Mes dossiers récents */}
+      <div className="card">
+        <div className="card-header flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Mes dossiers de suivi</h2>
+          <Link to="/dossiers" className="text-sm text-primary-600 hover:underline">Voir tout</Link>
+        </div>
+        <div className="card-body">
+          {myDossiers.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">Aucun dossier actif.</p>
+          ) : (
+            <div className="space-y-3">
+              {myDossiers.map(dossier => (
+                <Link
+                  key={dossier.id}
+                  to={`/dossiers/${dossier.id}`}
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <FolderOpen className="w-5 h-5 text-teal-600" />
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{dossier.usager_nom}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {dossier.motif || 'Sans motif'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    dossier.statut === 'ouvert' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                  }`}>
+                    {STATUT_DOSSIER_LABELS[dossier.statut]}
                   </span>
                 </Link>
               ))}

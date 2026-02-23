@@ -117,6 +117,51 @@ export const STATUT_RESERVATION_LABELS: Record<ReservationExterne['statut'], str
   terminee: 'Terminée',
 }
 
+export interface DossierSuivi {
+  id: string
+  usager_nom: string
+  usager_email: string | null
+  usager_telephone: string | null
+  motif: string | null
+  notes: string | null
+  statut: 'ouvert' | 'en_cours' | 'clos'
+  cree_par: string
+  responsable_id: string | null
+  created_at: string
+  updated_at: string
+  collaborateurs?: Collaborateur
+  responsable?: Collaborateur
+  seances?: Seance[]
+  dossier_reservations?: DossierReservation[]
+}
+
+export interface Seance {
+  id: string
+  dossier_id: string
+  reservation_id: string | null
+  date: string
+  resume: string
+  actions_prevues: string | null
+  redige_par: string
+  created_at: string
+  updated_at: string
+  collaborateurs?: Collaborateur
+}
+
+export interface DossierReservation {
+  id: string
+  dossier_id: string
+  reservation_id: string
+  linked_at: string
+  reservations_externes?: ReservationExterne
+}
+
+export const STATUT_DOSSIER_LABELS: Record<DossierSuivi['statut'], string> = {
+  ouvert: 'Ouvert',
+  en_cours: 'En cours',
+  clos: 'Clos',
+}
+
 export const JOURS_SEMAINE = [
   'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
 ] as const

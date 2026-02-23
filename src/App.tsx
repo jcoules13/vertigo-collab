@@ -11,6 +11,8 @@ import RendezVousPage from './pages/RendezVousPage'
 import RendezVousDetailPage from './pages/RendezVousDetailPage'
 import CollaborateursPage from './pages/CollaborateursPage'
 import ReservationsPage from './pages/ReservationsPage'
+import DossiersPage from './pages/DossiersPage'
+import DossierDetailPage from './pages/DossierDetailPage'
 import ProfilPage from './pages/ProfilPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -63,6 +65,8 @@ export default function App() {
               <Route path="rendez-vous" element={<RendezVousPage />} />
               <Route path="rendez-vous/:id" element={<RendezVousDetailPage />} />
               <Route path="reservations" element={<ReservationsPage />} />
+              <Route path="dossiers" element={<DossiersPage />} />
+              <Route path="dossiers/:id" element={<DossierDetailPage />} />
               <Route path="collaborateurs" element={<AdminRoute><CollaborateursPage /></AdminRoute>} />
               <Route path="profil" element={<ProfilPage />} />
             </Route>
