@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FolderOpen, Plus, Loader2, User, FileText, Phone, Mail } from 'lucide-react'
+import { FolderOpen, Plus, Loader2, User, FileText, Phone, Mail, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { DossierSuivi, STATUT_DOSSIER_LABELS } from '../types/database'
@@ -23,6 +23,7 @@ export default function DossiersPage() {
   const [saving, setSaving] = useState(false)
 
   // Form fields
+  const [formPrenom, setFormPrenom] = useState('')
   const [formNom, setFormNom] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formTelephone, setFormTelephone] = useState('')
@@ -61,6 +62,7 @@ export default function DossiersPage() {
 
     try {
       await supabase.from('dossiers_suivi').insert({
+        usager_prenom: formPrenom.trim() || null,
         usager_nom: formNom.trim(),
         usager_email: formEmail.trim() || null,
         usager_telephone: formTelephone.trim() || null,
@@ -69,6 +71,7 @@ export default function DossiersPage() {
         responsable_id: collaborateur.id,
       })
 
+      setFormPrenom('')
       setFormNom('')
       setFormEmail('')
       setFormTelephone('')
@@ -102,8 +105,12 @@ export default function DossiersPage() {
             <h3 className="font-semibold text-gray-900 dark:text-white">Nouveau dossier de suivi</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom de l'usager *</label>
-                <input value={formNom} onChange={e => setFormNom(e.target.value)} className="input" placeholder="Nom complet" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prénom</label>
+                <input value={formPrenom} onChange={e => setFormPrenom(e.target.value)} className="input" placeholder="Prénom" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom *</label>
+                <input value={formNom} onChange={e => setFormNom(e.target.value)} className="input" placeholder="Nom de famille" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
@@ -172,10 +179,23 @@ export default function DossiersPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">{dossier.usager_nom}</h3>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          {dossier.usager_prenom && `${dossier.usager_prenom} `}{dossier.usager_nom}
+                        </h3>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUT_COLORS[dossier.statut]}`}>
                           {STATUT_DOSSIER_LABELS[dossier.statut]}
                         </span>
+                        {(() => {
+                          const p = dossier.piliers
+                          const hasObj = Boolean(dossier.objectif_1 || dossier.objectif_2 || dossier.objectif_3)
+                          const hasPiliers = p && typeof p === 'object' && ['communication', 'administratif', 'social', 'bien_etre'].some(k => (p as any)[k]?.niveau !== null)
+                          const hasEval = dossier.eval_douleur !== null || dossier.eval_energie !== null
+                          const ppvStarted = hasObj || hasPiliers || hasEval
+                          const ppvComplete = hasObj && hasPiliers && hasEval && dossier.consent_conservation
+                          if (ppvComplete) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"><ClipboardCheck className="w-3 h-3" />PPV</span>
+                          if (ppvStarted) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"><ClipboardCheck className="w-3 h-3" />PPV</span>
+                          return null
+                        })()}
                       </div>
                       {dossier.motif && (
                         <p className="text-sm text-gray-600 dark:text-gray-300 mt-0.5">{dossier.motif}</p>

@@ -1,0 +1,82 @@
+import { useState, useEffect } from 'react'
+import { Save, Loader2 } from 'lucide-react'
+import { DossierSuivi, SITUATION_PERSONNELLE_OPTIONS, SITUATION_FAMILIALE_OPTIONS, SITUATION_FINANCIERE_OPTIONS, SITUATION_PROFESSIONNELLE_OPTIONS } from '../../types/database'
+
+interface Props {
+  dossier: DossierSuivi
+  onSave: (updates: Partial<DossierSuivi>) => Promise<void>
+  saving: boolean
+}
+
+function CheckboxGroup({ label, options, selected, onChange }: {
+  label: string
+  options: readonly string[]
+  selected: string[]
+  onChange: (v: string[]) => void
+}) {
+  const toggle = (opt: string) => {
+    onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt])
+  }
+
+  return (
+    <div>
+      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{label}</h4>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => (
+          <label key={opt} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selected.includes(opt)}
+              onChange={() => toggle(opt)}
+              className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">{opt}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default function TabSituation({ dossier, onSave, saving }: Props) {
+  const [personnelle, setPersonnelle] = useState<string[]>([])
+  const [familiale, setFamiliale] = useState<string[]>([])
+  const [financiere, setFinanciere] = useState<string[]>([])
+  const [professionnelle, setProfessionnelle] = useState<string[]>([])
+
+  useEffect(() => {
+    setPersonnelle(dossier.situation_personnelle || [])
+    setFamiliale(dossier.situation_familiale || [])
+    setFinanciere(dossier.situation_financiere || [])
+    setProfessionnelle(dossier.situation_professionnelle || [])
+  }, [dossier])
+
+  const handleSave = () => {
+    onSave({
+      situation_personnelle: personnelle,
+      situation_familiale: familiale,
+      situation_financiere: financiere,
+      situation_professionnelle: professionnelle,
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-gray-900 dark:text-white">3. Situation actuelle</h3>
+
+      <div className="space-y-5">
+        <CheckboxGroup label="Situation personnelle" options={SITUATION_PERSONNELLE_OPTIONS} selected={personnelle} onChange={setPersonnelle} />
+        <CheckboxGroup label="Situation familiale" options={SITUATION_FAMILIALE_OPTIONS} selected={familiale} onChange={setFamiliale} />
+        <CheckboxGroup label="Situation financière" options={SITUATION_FINANCIERE_OPTIONS} selected={financiere} onChange={setFinanciere} />
+        <CheckboxGroup label="Situation professionnelle" options={SITUATION_PROFESSIONNELLE_OPTIONS} selected={professionnelle} onChange={setProfessionnelle} />
+      </div>
+
+      <div className="flex justify-end pt-2">
+        <button onClick={handleSave} disabled={saving} className="btn-primary">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+          Enregistrer
+        </button>
+      </div>
+    </div>
+  )
+}

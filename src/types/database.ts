@@ -117,11 +117,75 @@ export const STATUT_RESERVATION_LABELS: Record<ReservationExterne['statut'], str
   terminee: 'Terminée',
 }
 
+// PPV — Pilier d'accompagnement
+export interface Pilier {
+  besoin: string
+  niveau: 1 | 2 | 3 | null
+  actions: string
+}
+
+export interface Piliers {
+  communication: Pilier
+  administratif: Pilier
+  social: Pilier
+  bien_etre: Pilier
+}
+
+// PPV — Plan d'actions row
+export interface PlanAction {
+  action: string
+  responsable: string
+  echeance: string
+  indicateur: string
+}
+
 export interface DossierSuivi {
   id: string
+  // Section 1: Identite
   usager_nom: string
+  usager_prenom: string | null
   usager_email: string | null
   usager_telephone: string | null
+  usager_date_naissance: string | null
+  usager_adresse: string | null
+  personne_prevenir_nom: string | null
+  personne_prevenir_telephone: string | null
+  // Section 2: Consentement RGPD
+  consent_conservation: boolean
+  consent_contact: boolean
+  consent_date: string | null
+  // Section 3: Situation actuelle
+  situation_personnelle: string[]
+  situation_familiale: string[]
+  situation_financiere: string[]
+  situation_professionnelle: string[]
+  // Section 4: Droits et couverture
+  droits_medecin_traitant: boolean
+  droits_ald: boolean
+  droits_rqth: boolean
+  droits_mdph_en_cours: boolean
+  droits_aah: boolean
+  droits_complementaire_sante: boolean
+  droits_commentaires: string | null
+  // Section 5: Objectifs SMART
+  objectif_1: string | null
+  objectif_2: string | null
+  objectif_3: string | null
+  // Section 6: Piliers
+  piliers: Piliers
+  // Section 7: Plan d'actions
+  plan_actions: PlanAction[]
+  // Section 8: Auto-evaluation
+  eval_douleur: number | null
+  eval_energie: number | null
+  eval_stress: number | null
+  eval_soutien: number | null
+  // Section 9: Observations
+  observations: string | null
+  // Section 11: Signatures
+  signature_beneficiaire_date: string | null
+  signature_referent_date: string | null
+  // Metadata
   motif: string | null
   notes: string | null
   statut: 'ouvert' | 'en_cours' | 'clos'
@@ -129,6 +193,7 @@ export interface DossierSuivi {
   responsable_id: string | null
   created_at: string
   updated_at: string
+  // Joined data
   collaborateurs?: Collaborateur
   responsable?: Collaborateur
   seances?: Seance[]
@@ -165,3 +230,65 @@ export const STATUT_DOSSIER_LABELS: Record<DossierSuivi['statut'], string> = {
 export const JOURS_SEMAINE = [
   'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
 ] as const
+
+// PPV — Options multi-choix
+export const SITUATION_PERSONNELLE_OPTIONS = [
+  'Seul(e)', 'En couple', 'Enfants à charge'
+] as const
+
+export const SITUATION_FAMILIALE_OPTIONS = [
+  'Isolé(e)', 'Entourage soutenant', 'Rupture familiale'
+] as const
+
+export const SITUATION_FINANCIERE_OPTIONS = [
+  'Minima sociaux', 'Difficultés ponctuelles'
+] as const
+
+export const SITUATION_PROFESSIONNELLE_OPTIONS = [
+  'En emploi', 'En recherche', 'En formation', 'Arrêt maladie'
+] as const
+
+// PPV — Labels niveaux par pilier (fidele au document PPV)
+export const PILIER_NIVEAUX: Record<keyof Piliers, [string, string, string]> = {
+  communication: ['Information', 'Accompagnement', 'Orientation'],
+  administratif: ['Information', 'Assistance', 'Accompagnement'],
+  social: ['Intégration', 'Autonomisation', 'Accompagnement'],
+  bien_etre: ['Sensibilisation', 'Participation', 'Soutien'],
+}
+
+export const PILIER_LABELS: Record<keyof Piliers, string> = {
+  communication: 'Communication',
+  administratif: 'Accompagnement administratif',
+  social: 'Accompagnement social',
+  bien_etre: 'Accompagnement bien-être',
+}
+
+export const PILIER_DESCRIPTIONS: Record<keyof Piliers, [string, string, string]> = {
+  communication: [
+    'Partage d\'informations, écoute active, échanges',
+    'Entraînement, structuration des échanges, compétences de communication',
+    'Mise en relation (médiateur, juriste, avocat, etc.)',
+  ],
+  administratif: [
+    'Présentation des droits et dispositifs',
+    'Compréhension et préparation des dossiers',
+    'Suivi complet des démarches',
+  ],
+  social: [
+    'Participation aux activités collectives',
+    'Développement des compétences sociales',
+    'Soutien personnalisé à l\'inclusion',
+  ],
+  bien_etre: [
+    'Information sur les activités de bien-être',
+    'Engagement dans des activités adaptées',
+    'Accompagnement personnalisé',
+  ],
+}
+
+export const DEFAULT_PILIERS: Piliers = {
+  communication: { besoin: '', niveau: null, actions: '' },
+  administratif: { besoin: '', niveau: null, actions: '' },
+  social: { besoin: '', niveau: null, actions: '' },
+  bien_etre: { besoin: '', niveau: null, actions: '' },
+}

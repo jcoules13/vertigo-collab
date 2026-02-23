@@ -1,0 +1,188 @@
+import { useState, useEffect } from 'react'
+import { Plus, Edit2, Save, Loader2, CheckCircle } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { DossierSuivi, Seance } from '../../types/database'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
+
+interface Props {
+  dossier: DossierSuivi
+  collaborateurId: string
+  onDossierUpdated: () => void
+}
+
+export default function TabSeances({ dossier, collaborateurId, onDossierUpdated }: Props) {
+  const [seances, setSeances] = useState<Seance[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  // New seance form
+  const [showForm, setShowForm] = useState(false)
+  const [seanceDate, setSeanceDate] = useState(format(new Date(), 'yyyy-MM-dd'))
+  const [seanceResume, setSeanceResume] = useState('')
+  const [seanceActions, setSeanceActions] = useState('')
+
+  // Edit seance
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editResume, setEditResume] = useState('')
+  const [editActions, setEditActions] = useState('')
+
+  const fetchSeances = async () => {
+    try {
+      const { data } = await supabase
+        .from('seances')
+        .select('*, collaborateurs!redige_par(prenom, nom)')
+        .eq('dossier_id', dossier.id)
+        .order('date', { ascending: false })
+      setSeances(data || [])
+    } catch (err) {
+      console.error('fetchSeances error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchSeances() }, [dossier.id])
+
+  const handleAdd = async () => {
+    if (!seanceResume.trim()) return
+    setSaving(true)
+    try {
+      await supabase.from('seances').insert({
+        dossier_id: dossier.id,
+        date: seanceDate,
+        resume: seanceResume.trim(),
+        actions_prevues: seanceActions.trim() || null,
+        redige_par: collaborateurId,
+      })
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() }
+      if (dossier.statut === 'ouvert') updates.statut = 'en_cours'
+      await supabase.from('dossiers_suivi').update(updates).eq('id', dossier.id)
+      setSeanceResume('')
+      setSeanceActions('')
+      setShowForm(false)
+      await fetchSeances()
+      onDossierUpdated()
+    } catch (err) {
+      console.error('handleAdd error:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUpdate = async (seanceId: string) => {
+    if (!editResume.trim()) return
+    setSaving(true)
+    try {
+      await supabase.from('seances').update({
+        resume: editResume.trim(),
+        actions_prevues: editActions.trim() || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', seanceId)
+      setEditingId(null)
+      await fetchSeances()
+    } catch (err) {
+      console.error('handleUpdate error:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary-600" /></div>
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-gray-900 dark:text-white">Séances ({seances.length})</h3>
+        {dossier.statut !== 'clos' && (
+          <button onClick={() => setShowForm(!showForm)} className="text-sm text-primary-600 hover:underline flex items-center gap-1">
+            <Plus className="w-4 h-4" /> Ajouter une séance
+          </button>
+        )}
+      </div>
+
+      {/* New seance form */}
+      {showForm && (
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+            <input type="date" value={seanceDate} onChange={e => setSeanceDate(e.target.value)} className="input w-auto" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Résumé de la séance *</label>
+            <textarea value={seanceResume} onChange={e => setSeanceResume(e.target.value)} className="input" rows={4} placeholder="Résumé de ce qui a été abordé..." />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Actions prévues</label>
+            <textarea value={seanceActions} onChange={e => setSeanceActions(e.target.value)} className="input" rows={2} placeholder="Prochaines étapes..." />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleAdd} disabled={saving || !seanceResume.trim()} className="btn-primary text-sm">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enregistrer'}
+            </button>
+            <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline */}
+      {seances.length === 0 ? (
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Aucune séance enregistrée.</p>
+      ) : (
+        <div className="space-y-4">
+          {seances.map(seance => {
+            const auteur = seance.collaborateurs as any as { prenom: string; nom: string } | null
+            const isEditing = editingId === seance.id
+
+            return (
+              <div key={seance.id} className="relative pl-6 border-l-2 border-primary-200 dark:border-primary-800">
+                <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-primary-600 border-2 border-white dark:border-gray-900" />
+                <div className="pb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {format(new Date(seance.date), 'd MMMM yyyy', { locale: fr })}
+                    </span>
+                    {auteur && <span>par {auteur.prenom} {auteur.nom}</span>}
+                    {seance.redige_par === collaborateurId && !isEditing && (
+                      <button
+                        onClick={() => { setEditingId(seance.id); setEditResume(seance.resume); setEditActions(seance.actions_prevues || '') }}
+                        className="text-primary-600 hover:underline"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {isEditing ? (
+                    <div className="mt-2 space-y-2">
+                      <textarea value={editResume} onChange={e => setEditResume(e.target.value)} className="input" rows={3} />
+                      <textarea value={editActions} onChange={e => setEditActions(e.target.value)} className="input" rows={2} placeholder="Actions prévues..." />
+                      <div className="flex gap-2">
+                        <button onClick={() => handleUpdate(seance.id)} disabled={saving} className="btn-primary text-sm">
+                          <Save className="w-3.5 h-3.5 mr-1" /> Enregistrer
+                        </button>
+                        <button onClick={() => setEditingId(null)} className="btn-secondary text-sm">Annuler</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 whitespace-pre-wrap">{seance.resume}</p>
+                      {seance.actions_prevues && (
+                        <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/10 rounded text-sm text-yellow-800 dark:text-yellow-300">
+                          <CheckCircle className="w-3.5 h-3.5 inline mr-1" />
+                          <strong>Actions prévues :</strong> {seance.actions_prevues}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

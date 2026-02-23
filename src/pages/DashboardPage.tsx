@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle, FolderOpen } from 'lucide-react'
+import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle, FolderOpen, BarChart3, Activity } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PermanenceOccurrence, RendezVous, ReservationExterne, DossierSuivi, STATUT_RESERVATION_LABELS, CANAL_LABELS, STATUT_DOSSIER_LABELS } from '../types/database'
@@ -8,7 +8,7 @@ import { format, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 export default function DashboardPage() {
-  const { collaborateur } = useAuth()
+  const { collaborateur, isAdmin } = useAuth()
   const [loading, setLoading] = useState(true)
   const [myPermanences, setMyPermanences] = useState<PermanenceOccurrence[]>([])
   const [myRdvs, setMyRdvs] = useState<RendezVous[]>([])
@@ -16,6 +16,17 @@ export default function DashboardPage() {
   const [pendingCount, setPendingCount] = useState(0)
   const [myDossiersCount, setMyDossiersCount] = useState(0)
   const [myDossiers, setMyDossiers] = useState<DossierSuivi[]>([])
+
+  // Admin stats
+  const [adminStats, setAdminStats] = useState<{
+    dossiersMonth: number
+    dossiersWeek: number
+    avgSeances: number
+    avgDouleur: number | null
+    avgEnergie: number | null
+    avgStress: number | null
+    avgSoutien: number | null
+  } | null>(null)
 
   useEffect(() => {
     if (!collaborateur) return
@@ -78,6 +89,42 @@ export default function DashboardPage() {
         setPendingCount((pendingPermRes.count || 0) + (pendingRdvRes.count || 0))
         setMyDossiersCount(dossierCountRes.count || 0)
         setMyDossiers(dossierRecentRes.data || [])
+
+        // Admin stats
+        if (collaborateur.role_asso === 'admin') {
+          try {
+            const now = new Date()
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+            const startOfWeek = new Date(now.getTime() - now.getDay() * 86400000).toISOString()
+
+            const [monthRes, weekRes, allDossiersRes] = await Promise.all([
+              supabase.from('dossiers_suivi').select('id', { count: 'exact', head: true }).gte('created_at', startOfMonth),
+              supabase.from('dossiers_suivi').select('id', { count: 'exact', head: true }).gte('updated_at', startOfWeek).in('statut', ['en_cours', 'clos']),
+              supabase.from('dossiers_suivi').select('id, eval_douleur, eval_energie, eval_stress, eval_soutien, seances(id)'),
+            ])
+
+            const allDossiers = allDossiersRes.data || []
+            const totalSeances = allDossiers.reduce((sum: number, d: any) => sum + (d.seances?.length || 0), 0)
+            const avgSeances = allDossiers.length > 0 ? Math.round((totalSeances / allDossiers.length) * 10) / 10 : 0
+
+            const avg = (field: string) => {
+              const vals = allDossiers.filter((d: any) => d[field] !== null).map((d: any) => d[field])
+              return vals.length > 0 ? Math.round((vals.reduce((a: number, b: number) => a + b, 0) / vals.length) * 10) / 10 : null
+            }
+
+            setAdminStats({
+              dossiersMonth: monthRes.count || 0,
+              dossiersWeek: weekRes.count || 0,
+              avgSeances,
+              avgDouleur: avg('eval_douleur'),
+              avgEnergie: avg('eval_energie'),
+              avgStress: avg('eval_stress'),
+              avgSoutien: avg('eval_soutien'),
+            })
+          } catch (err) {
+            console.error('Admin stats error:', err)
+          }
+        }
       } catch (err) {
         console.error('DashboardPage fetchData error:', err)
       } finally {
@@ -251,6 +298,67 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      {/* Admin stats */}
+      {isAdmin && adminStats && (
+        <div className="card">
+          <div className="card-header">
+            <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary-600" /> Statistiques anonymes
+            </h2>
+          </div>
+          <div className="card-body">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
+                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{adminStats.dossiersMonth}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Dossiers ce mois</p>
+              </div>
+              <div className="text-center p-3 bg-green-50 dark:bg-green-900/10 rounded-lg">
+                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{adminStats.dossiersWeek}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Traités cette semaine</p>
+              </div>
+              <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/10 rounded-lg">
+                <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">{adminStats.avgSeances}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Séances / dossier</p>
+              </div>
+              <div className="text-center p-3 bg-teal-50 dark:bg-teal-900/10 rounded-lg">
+                <div className="flex items-center justify-center gap-1">
+                  <Activity className="w-4 h-4 text-teal-600" />
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Auto-évaluation</p>
+              </div>
+            </div>
+            {(adminStats.avgDouleur !== null || adminStats.avgEnergie !== null) && (
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                {adminStats.avgDouleur !== null && (
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded">
+                    <span className="text-gray-600 dark:text-gray-400">Douleur</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{adminStats.avgDouleur}/10</span>
+                  </div>
+                )}
+                {adminStats.avgEnergie !== null && (
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded">
+                    <span className="text-gray-600 dark:text-gray-400">Énergie</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{adminStats.avgEnergie}/10</span>
+                  </div>
+                )}
+                {adminStats.avgStress !== null && (
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded">
+                    <span className="text-gray-600 dark:text-gray-400">Stress</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{adminStats.avgStress}/10</span>
+                  </div>
+                )}
+                {adminStats.avgSoutien !== null && (
+                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded">
+                    <span className="text-gray-600 dark:text-gray-400">Soutien</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{adminStats.avgSoutien}/10</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Mes dossiers récents */}
       <div className="card">
         <div className="card-header flex items-center justify-between">
