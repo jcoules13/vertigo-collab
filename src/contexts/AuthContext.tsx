@@ -23,13 +23,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchCollaborateur = async (userId: string) => {
-    const { data } = await supabase
-      .from('collaborateurs')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('actif', true)
-      .single()
-    setCollaborateur(data)
+    try {
+      const { data } = await supabase
+        .from('collaborateurs')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('actif', true)
+        .single()
+      setCollaborateur(data)
+    } catch (err) {
+      console.error('AuthContext fetchCollaborateur error:', err)
+    }
   }
 
   const refreshCollaborateur = async () => {
@@ -47,6 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setLoading(false)
       }
+    }).catch((err) => {
+      console.error('AuthContext getSession error:', err)
+      setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
