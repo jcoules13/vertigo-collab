@@ -79,7 +79,12 @@ export default function RendezVousDetailPage() {
 
       if (newIds.length > 0) {
         await supabase.from('rdv_participants').insert(
-          newIds.map(cid => ({ rdv_id: rdv.id, collaborateur_id: cid }))
+          newIds.map(cid => ({
+            rdv_id: rdv.id,
+            collaborateur_id: cid,
+            statut: 'confirme',
+            confirme_at: new Date().toISOString(),
+          }))
         )
       }
 

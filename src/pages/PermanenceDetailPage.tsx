@@ -91,7 +91,12 @@ export default function PermanenceDetailPage() {
 
       if (newIds.length > 0) {
         await supabase.from('permanence_assignments').insert(
-          newIds.map(cid => ({ occurrence_id: occurrence.id, collaborateur_id: cid }))
+          newIds.map(cid => ({
+            occurrence_id: occurrence.id,
+            collaborateur_id: cid,
+            statut: 'confirme',
+            confirme_at: new Date().toISOString(),
+          }))
         )
 
         try {
