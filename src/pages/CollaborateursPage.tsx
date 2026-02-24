@@ -108,13 +108,15 @@ export default function CollaborateursPage() {
 
   const toggleActif = async (c: Collaborateur) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('collaborateurs')
         .update({ actif: !c.actif, updated_at: new Date().toISOString() })
         .eq('id', c.id)
+      if (error) throw error
       await fetchCollaborateurs()
-    } catch (err) {
+    } catch (err: any) {
       console.error('toggleActif error:', err)
+      setError(err.message || 'Erreur lors du changement de statut')
     }
   }
 
