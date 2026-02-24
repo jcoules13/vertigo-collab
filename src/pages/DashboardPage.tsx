@@ -10,6 +10,7 @@ import { fr } from 'date-fns/locale'
 export default function DashboardPage() {
   const { collaborateur, isAdmin } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [myPermanences, setMyPermanences] = useState<PermanenceOccurrence[]>([])
   const [myRdvs, setMyRdvs] = useState<RendezVous[]>([])
   const [reservations, setReservations] = useState<ReservationExterne[]>([])
@@ -83,6 +84,12 @@ export default function DashboardPage() {
             .limit(5),
         ])
 
+        if (permRes.error) throw permRes.error
+        if (rdvRes.error) throw rdvRes.error
+        if (resExtRes.error) throw resExtRes.error
+        if (dossierCountRes.error) throw dossierCountRes.error
+        if (dossierRecentRes.error) throw dossierRecentRes.error
+
         setMyPermanences(permRes.data || [])
         setMyRdvs(rdvRes.data || [])
         setReservations(resExtRes.data || [])
@@ -125,8 +132,9 @@ export default function DashboardPage() {
             console.error('Admin stats error:', err)
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('DashboardPage fetchData error:', err)
+        setError(err.message || 'Erreur lors du chargement des données')
       } finally {
         setLoading(false)
       }
@@ -161,6 +169,10 @@ export default function DashboardPage() {
           {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
         </p>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

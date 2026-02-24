@@ -37,18 +37,25 @@ export default function RendezVousPage() {
       if (filter === 'avenir') query = query.gte('date', today)
       if (filter === 'passes') query = query.lt('date', today)
 
-      const { data } = await query
+      const { data, error: fetchErr } = await query
+      if (fetchErr) throw fetchErr
       setRdvs(data || [])
-    } catch (err) {
+    } catch (err: any) {
       console.error('RendezVousPage fetch error:', err)
+      setError(err.message || 'Erreur lors du chargement des rendez-vous')
     } finally {
       setLoading(false)
     }
   }
 
   const fetchCollaborateurs = async () => {
-    const { data } = await supabase.from('collaborateurs').select('*').eq('actif', true).order('nom')
-    setAllCollaborateurs(data || [])
+    try {
+      const { data, error: err } = await supabase.from('collaborateurs').select('*').eq('actif', true).order('nom')
+      if (err) throw err
+      setAllCollaborateurs(data || [])
+    } catch (err) {
+      console.error('fetchCollaborateurs error:', err)
+    }
   }
 
   useEffect(() => { fetchRdvs() }, [filter])
@@ -91,9 +98,10 @@ export default function RendezVousPage() {
 
       // Add participants
       if (formParticipants.length > 0) {
-        await supabase.from('rdv_participants').insert(
+        const { error: partErr } = await supabase.from('rdv_participants').insert(
           formParticipants.map(cid => ({ rdv_id: rdv.id, collaborateur_id: cid }))
         )
+        if (partErr) throw partErr
       }
 
       // Notify via n8n (non-blocking)
@@ -112,8 +120,8 @@ export default function RendezVousPage() {
             lieu: formLieu,
             collaborateur_ids: formParticipants,
           }),
-        })
-      } catch {}
+        }).catch(err => console.warn('[Webhook] non-blocking error:', err))
+      } catch (err) { console.warn('[Webhook] non-blocking error:', err) }
 
       await fetchRdvs()
       resetForm()
@@ -138,6 +146,10 @@ export default function RendezVousPage() {
           </button>
         )}
       </div>
+
+      {error && !showForm && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-2">

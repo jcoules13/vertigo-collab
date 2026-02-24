@@ -37,7 +37,7 @@ export default function DashboardLayout() {
   const allNavItems = isAdmin ? [...navigation, ...adminNavigation] : navigation
 
   const initials = collaborateur
-    ? `${collaborateur.prenom[0]}${collaborateur.nom[0]}`.toUpperCase()
+    ? `${collaborateur.prenom?.[0] ?? '?'}${collaborateur.nom?.[0] ?? '?'}`.toUpperCase()
     : '?'
 
   return (

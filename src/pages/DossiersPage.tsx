@@ -16,6 +16,7 @@ const STATUT_COLORS: Record<DossierSuivi['statut'], string> = {
 export default function DossiersPage() {
   const { collaborateur } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [dossiers, setDossiers] = useState<(DossierSuivi & { seances_count: number })[]>([])
   const [statutFilter, setStatutFilter] = useState<DossierSuivi['statut'] | 'tous'>('tous')
   const [mesDossiers, setMesDossiers] = useState(false)
@@ -41,14 +42,16 @@ export default function DossiersPage() {
       if (statutFilter !== 'tous') query = query.eq('statut', statutFilter)
       if (mesDossiers) query = query.eq('responsable_id', collaborateur.id)
 
-      const { data } = await query
+      const { data, error: err } = await query
+      if (err) throw err
       const mapped = (data || []).map((d: any) => ({
         ...d,
         seances_count: d.seances?.length || 0,
       }))
       setDossiers(mapped)
-    } catch (err) {
+    } catch (err: any) {
       console.error('DossiersPage fetchDossiers error:', err)
+      setError(err.message || 'Erreur lors du chargement des dossiers')
     } finally {
       setLoading(false)
     }
@@ -61,7 +64,7 @@ export default function DossiersPage() {
     setSaving(true)
 
     try {
-      await supabase.from('dossiers_suivi').insert({
+      const { error: insertErr } = await supabase.from('dossiers_suivi').insert({
         usager_prenom: formPrenom.trim() || null,
         usager_nom: formNom.trim(),
         usager_email: formEmail.trim() || null,
@@ -70,6 +73,7 @@ export default function DossiersPage() {
         cree_par: collaborateur.id,
         responsable_id: collaborateur.id,
       })
+      if (insertErr) throw insertErr
 
       setFormPrenom('')
       setFormNom('')
@@ -78,8 +82,9 @@ export default function DossiersPage() {
       setFormMotif('')
       setShowForm(false)
       await fetchDossiers()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleCreate error:', err)
+      setError(err.message || 'Erreur lors de la création du dossier')
     } finally {
       setSaving(false)
     }
@@ -97,6 +102,10 @@ export default function DossiersPage() {
           <Plus className="w-4 h-4 mr-2" /> Nouveau dossier
         </button>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
 
       {/* Create form */}
       {showForm && (

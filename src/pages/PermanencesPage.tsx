@@ -14,6 +14,7 @@ export default function PermanencesPage() {
   const { isAdmin } = useAuth()
   const [tab, setTab] = useState<'calendrier' | 'definitions'>('calendrier')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [permanences, setPermanences] = useState<Permanence[]>([])
   const [occurrences, setOccurrences] = useState<PermanenceOccurrence[]>([])
 
@@ -48,10 +49,13 @@ export default function PermanencesPage() {
           .lte('date', weekEnd)
           .order('date', { ascending: true }),
       ])
+      if (defRes.error) throw defRes.error
+      if (occRes.error) throw occRes.error
       setPermanences(defRes.data || [])
       setOccurrences(occRes.data || [])
-    } catch (err) {
+    } catch (err: any) {
       console.error('PermanencesPage fetch error:', err)
+      setError(err.message || 'Erreur lors du chargement des permanences')
     } finally {
       setLoading(false)
     }
@@ -86,15 +90,18 @@ export default function PermanencesPage() {
       const data = { nom: defNom, lieu: defLieu, jour_semaine: defJour, heure_debut: defDebut, heure_fin: defFin }
 
       if (editingDef) {
-        await supabase.from('permanences').update({ ...data, updated_at: new Date().toISOString() }).eq('id', editingDef.id)
+        const { error: updateErr } = await supabase.from('permanences').update({ ...data, updated_at: new Date().toISOString() }).eq('id', editingDef.id)
+        if (updateErr) throw updateErr
       } else {
-        await supabase.from('permanences').insert(data)
+        const { error: insertErr } = await supabase.from('permanences').insert(data)
+        if (insertErr) throw insertErr
       }
 
       await fetchAll()
       resetDefForm()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleSaveDef error:', err)
+      setError(err.message || 'Erreur lors de la sauvegarde')
     } finally {
       setSavingDef(false)
     }
@@ -103,10 +110,12 @@ export default function PermanencesPage() {
   const deleteDef = async (id: string) => {
     if (!confirm('Supprimer cette définition de permanence ?')) return
     try {
-      await supabase.from('permanences').delete().eq('id', id)
+      const { error: deleteErr } = await supabase.from('permanences').delete().eq('id', id)
+      if (deleteErr) throw deleteErr
       await fetchAll()
-    } catch (err) {
+    } catch (err: any) {
       console.error('deleteDef error:', err)
+      setError(err.message || 'Erreur lors de la suppression')
     }
   }
 
@@ -140,6 +149,7 @@ export default function PermanencesPage() {
         .select('permanence_id, date')
         .in('permanence_id', inserts.map(i => i.permanence_id))
         .in('date', [...new Set(inserts.map(i => i.date))])
+      if (existingRes.error) throw existingRes.error
 
       const existingKeys = new Set(
         (existingRes.data || []).map(e => `${e.permanence_id}_${e.date}`)
@@ -148,12 +158,14 @@ export default function PermanencesPage() {
       const newInserts = inserts.filter(i => !existingKeys.has(`${i.permanence_id}_${i.date}`))
 
       if (newInserts.length > 0) {
-        await supabase.from('permanence_occurrences').insert(newInserts)
+        const { error: insertErr } = await supabase.from('permanence_occurrences').insert(newInserts)
+        if (insertErr) throw insertErr
       }
 
       await fetchAll()
-    } catch (err) {
+    } catch (err: any) {
       console.error('generateOccurrences error:', err)
+      setError(err.message || 'Erreur lors de la génération')
     } finally {
       setGenerating(false)
     }
@@ -178,6 +190,10 @@ export default function PermanencesPage() {
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">

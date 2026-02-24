@@ -30,6 +30,7 @@ export default function ReservationsPage() {
   const { collaborateur } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [reservations, setReservations] = useState<ReservationWithGerePar[]>([])
   const [filter, setFilter] = useState<'avenir' | 'passes' | 'tous'>('avenir')
   const [statutFilter, setStatutFilter] = useState<ReservationExterne['statut'] | 'tous'>('tous')
@@ -48,10 +49,12 @@ export default function ReservationsPage() {
       if (filter === 'passes') query = query.lt('date', today)
       if (statutFilter !== 'tous') query = query.eq('statut', statutFilter)
 
-      const { data } = await query
+      const { data, error: err } = await query
+      if (err) throw err
       setReservations((data || []) as ReservationWithGerePar[])
-    } catch (err) {
+    } catch (err: any) {
       console.error('ReservationsPage fetchReservations error:', err)
+      setError(err.message || 'Erreur lors du chargement des réservations')
     } finally {
       setLoading(false)
     }
@@ -69,7 +72,8 @@ export default function ReservationsPage() {
       else if (action === 'annuler') { update.statut = 'annulee'; update.cancelled_at = new Date().toISOString() }
       else if (action === 'terminer') { update.statut = 'terminee' }
 
-      await supabase.from('reservations_externes').update(update).eq('id', reservationId)
+      const { error: updateErr } = await supabase.from('reservations_externes').update(update).eq('id', reservationId)
+      if (updateErr) throw updateErr
 
       // Sync to Google Calendar via n8n (non-blocking)
       try {
@@ -83,10 +87,13 @@ export default function ReservationsPage() {
             notes: null,
             collaborateur_id: collaborateur.id,
           }),
-        })
-      } catch {}
+        }).catch(err => console.warn('[Webhook] non-blocking error:', err))
+      } catch (err) { console.warn('[Webhook] non-blocking error:', err) }
 
       await fetchReservations()
+    } catch (err: any) {
+      console.error('handleAction error:', err)
+      setError(err.message || 'Erreur lors de la mise à jour')
     } finally {
       setActionLoading(null)
     }
@@ -97,12 +104,13 @@ export default function ReservationsPage() {
     setActionLoading(res.id)
 
     try {
-      await supabase.from('reservations_externes').update({
+      const { error: claimErr } = await supabase.from('reservations_externes').update({
         gere_par: collaborateur.id,
         statut: 'confirmee',
         confirmed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).eq('id', res.id)
+      if (claimErr) throw claimErr
 
       // Sync to Google Calendar
       try {
@@ -116,23 +124,24 @@ export default function ReservationsPage() {
             notes: null,
             collaborateur_id: collaborateur.id,
           }),
-        })
-      } catch {}
+        }).catch(err => console.warn('[Webhook] non-blocking error:', err))
+      } catch (err) { console.warn('[Webhook] non-blocking error:', err) }
 
       await fetchReservations()
 
       // Check if dossier exists for this usager, if not propose creation
       if (res.usager_email) {
-        const { data: existingDossiers } = await supabase
+        const { data: existingDossiers, error: dossierErr } = await supabase
           .from('dossiers_suivi')
           .select('id')
           .eq('usager_email', res.usager_email)
           .neq('statut', 'clos')
           .limit(1)
+        if (dossierErr) throw dossierErr
 
         if (!existingDossiers || existingDossiers.length === 0) {
           // Create dossier automatically
-          const { data: newDossier } = await supabase.from('dossiers_suivi').insert({
+          const { data: newDossier, error: insertErr } = await supabase.from('dossiers_suivi').insert({
             usager_nom: res.usager_nom,
             usager_email: res.usager_email,
             usager_telephone: res.usager_telephone,
@@ -140,6 +149,7 @@ export default function ReservationsPage() {
             cree_par: collaborateur.id,
             responsable_id: collaborateur.id,
           }).select('id').single()
+          if (insertErr) throw insertErr
 
           if (newDossier) {
             // Link reservation to dossier
@@ -160,6 +170,9 @@ export default function ReservationsPage() {
           return
         }
       }
+    } catch (err: any) {
+      console.error('handleClaim error:', err)
+      setError(err.message || 'Erreur lors de la prise en charge')
     } finally {
       setActionLoading(null)
     }
@@ -170,15 +183,17 @@ export default function ReservationsPage() {
     setActionLoading(notesEdit.id)
 
     try {
-      await supabase
+      const { error: updateErr } = await supabase
         .from('reservations_externes')
         .update({ notes_admin: notesEdit.notes, gere_par: collaborateur.id, updated_at: new Date().toISOString() })
         .eq('id', notesEdit.id)
+      if (updateErr) throw updateErr
 
       setNotesEdit(null)
       await fetchReservations()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleSaveNotes error:', err)
+      setError(err.message || 'Erreur lors de la sauvegarde des notes')
     } finally {
       setActionLoading(null)
     }
@@ -201,6 +216,10 @@ export default function ReservationsPage() {
           <ExternalLink className="w-4 h-4 mr-2" /> Page de réservation
         </a>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">

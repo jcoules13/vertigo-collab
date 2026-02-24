@@ -15,6 +15,7 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
   const [seances, setSeances] = useState<Seance[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   // New seance form
   const [showForm, setShowForm] = useState(false)
@@ -29,14 +30,16 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
 
   const fetchSeances = async () => {
     try {
-      const { data } = await supabase
+      const { data, error: fetchErr } = await supabase
         .from('seances')
         .select('*, collaborateurs!redige_par(prenom, nom)')
         .eq('dossier_id', dossier.id)
         .order('date', { ascending: false })
+      if (fetchErr) throw fetchErr
       setSeances(data || [])
-    } catch (err) {
+    } catch (err: any) {
       console.error('fetchSeances error:', err)
+      setError(err.message || 'Erreur lors du chargement des séances')
     } finally {
       setLoading(false)
     }
@@ -48,23 +51,26 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
     if (!seanceResume.trim()) return
     setSaving(true)
     try {
-      await supabase.from('seances').insert({
+      const { error: insertErr } = await supabase.from('seances').insert({
         dossier_id: dossier.id,
         date: seanceDate,
         resume: seanceResume.trim(),
         actions_prevues: seanceActions.trim() || null,
         redige_par: collaborateurId,
       })
+      if (insertErr) throw insertErr
       const updates: Record<string, any> = { updated_at: new Date().toISOString() }
       if (dossier.statut === 'ouvert') updates.statut = 'en_cours'
-      await supabase.from('dossiers_suivi').update(updates).eq('id', dossier.id)
+      const { error: updateErr } = await supabase.from('dossiers_suivi').update(updates).eq('id', dossier.id)
+      if (updateErr) throw updateErr
       setSeanceResume('')
       setSeanceActions('')
       setShowForm(false)
       await fetchSeances()
       onDossierUpdated()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleAdd error:', err)
+      setError(err.message || 'Erreur lors de l\'ajout de la séance')
     } finally {
       setSaving(false)
     }
@@ -74,15 +80,17 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
     if (!editResume.trim()) return
     setSaving(true)
     try {
-      await supabase.from('seances').update({
+      const { error: updateErr } = await supabase.from('seances').update({
         resume: editResume.trim(),
         actions_prevues: editActions.trim() || null,
         updated_at: new Date().toISOString(),
       }).eq('id', seanceId)
+      if (updateErr) throw updateErr
       setEditingId(null)
       await fetchSeances()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleUpdate error:', err)
+      setError(err.message || 'Erreur lors de la modification')
     } finally {
       setSaving(false)
     }
@@ -102,6 +110,10 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
 
       {/* New seance form */}
       {showForm && (

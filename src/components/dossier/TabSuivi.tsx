@@ -24,18 +24,21 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
   const [rdvCanal, setRdvCanal] = useState<'visio' | 'presentiel' | 'telephone' | 'autre'>('presentiel')
   const [rdvLieu, setRdvLieu] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [emailSent, setEmailSent] = useState(false)
 
   const fetchLinked = async () => {
     try {
-      const { data } = await supabase
+      const { data, error: fetchErr } = await supabase
         .from('dossier_reservations')
         .select('*, reservations_externes(*)')
         .eq('dossier_id', dossier.id)
         .order('linked_at', { ascending: false })
+      if (fetchErr) throw fetchErr
       setLinkedReservations((data || []) as any)
-    } catch (err) {
+    } catch (err: any) {
       console.error('fetchLinked error:', err)
+      setError(err.message || 'Erreur lors du chargement des rendez-vous liés')
     } finally {
       setLoading(false)
     }
@@ -49,25 +52,29 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
       if (dossier.usager_email) {
         query = query.eq('usager_email', dossier.usager_email)
       }
-      const { data } = await query
+      const { data, error: queryErr } = await query
+      if (queryErr) throw queryErr
       const linkedIds = new Set(linkedReservations.map(lr => lr.reservation_id))
       setAvailableReservations((data || []).filter(r => !linkedIds.has(r.id)))
       setShowLinkForm(true)
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleShowLink error:', err)
+      setError(err.message || 'Erreur lors de la recherche des réservations')
     }
   }
 
   const handleLink = async (reservationId: string) => {
     try {
-      await supabase.from('dossier_reservations').insert({
+      const { error: linkErr } = await supabase.from('dossier_reservations').insert({
         dossier_id: dossier.id,
         reservation_id: reservationId,
       })
+      if (linkErr) throw linkErr
       setShowLinkForm(false)
       await fetchLinked()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleLink error:', err)
+      setError(err.message || 'Erreur lors de la liaison')
     }
   }
 
@@ -77,7 +84,7 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
     setEmailSent(false)
     try {
       const titre = `Suivi PPV — ${dossier.usager_nom}`
-      const { data: reservation } = await supabase.from('reservations_externes').insert({
+      const { data: reservation, error: insertErr } = await supabase.from('reservations_externes').insert({
         usager_nom: dossier.usager_nom,
         usager_email: dossier.usager_email,
         usager_telephone: dossier.usager_telephone,
@@ -90,12 +97,14 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
         statut: 'confirmee',
         google_calendar_event_id: `ppv-${dossier.id}-${Date.now()}`,
       }).select().single()
+      if (insertErr) throw insertErr
 
       if (reservation) {
-        await supabase.from('dossier_reservations').insert({
+        const { error: linkErr } = await supabase.from('dossier_reservations').insert({
           dossier_id: dossier.id,
           reservation_id: reservation.id,
         })
+        if (linkErr) throw linkErr
 
         // Send confirmation email via n8n (non-blocking)
         if (dossier.usager_email) {
@@ -115,8 +124,8 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
               }),
             })
             setEmailSent(true)
-          } catch {
-            // Non-blocking — email failure shouldn't prevent RDV creation
+          } catch (err) {
+            console.warn('[Webhook] non-blocking error:', err)
           }
         }
       }
@@ -125,8 +134,9 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
       setRdvDate('')
       setRdvLieu('')
       await fetchLinked()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleCreateRdv error:', err)
+      setError(err.message || 'Erreur lors de la création du RDV')
     } finally {
       setSaving(false)
     }
@@ -149,6 +159,10 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
 
       {emailSent && (
         <div className="p-3 bg-green-50 dark:bg-green-900/10 text-green-700 dark:text-green-400 text-sm rounded-lg flex items-center gap-2">
