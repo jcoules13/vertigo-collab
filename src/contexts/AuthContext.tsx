@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    // SAFETY TIMEOUT (8s) — guarantees loading=false even if everything hangs
+    // Safety timeout (8s) — guarantees loading=false if everything hangs
     const safetyTimeout = setTimeout(() => {
       if (mounted) {
         console.warn('[Auth] Safety timeout 8s — forcing loading=false')
@@ -33,66 +33,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, 8000)
 
+    const done = () => {
+      if (mounted) {
+        setLoading(false)
+        clearTimeout(safetyTimeout)
+      }
+    }
+
+    const fetchCollab = async (userId: string): Promise<Collaborateur | null> => {
+      // Promise.race with 5s timeout (more reliable than AbortController)
+      const query = supabase
+        .from('collaborateurs')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('actif', true)
+        .single()
+
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Query timeout')), 5000)
+      )
+
+      const { data, error } = await Promise.race([query, timeout])
+
+      if (error) {
+        console.error('[Auth] fetchCollaborateur error:', error)
+        return null
+      }
+      return data as Collaborateur
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
+      async (event, newSession) => {
         if (!mounted) return
 
         try {
           setSession(newSession)
           setUser(newSession?.user ?? null)
 
-          if (newSession?.user) {
-            // Query timeout (5s) via AbortController
-            const controller = new AbortController()
-            const queryTimeout = setTimeout(() => controller.abort(), 5000)
+          // No session — clear and finish
+          if (!newSession?.user) {
+            setCollaborateur(null)
+            done()
+            return
+          }
 
-            try {
-              const { data, error } = await supabase
-                .from('collaborateurs')
-                .select('*')
-                .eq('user_id', newSession.user.id)
-                .eq('actif', true)
-                .abortSignal(controller.signal)
-                .single()
-
-              clearTimeout(queryTimeout)
-              if (!mounted) return
-
-              if (error) {
-                console.error('[Auth] fetchCollaborateur error:', error)
-                setCollaborateur(null)
-
-                // Stale JWT — session is dead, sign out cleanly
-                if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
-                  console.warn('[Auth] Stale session detected, signing out')
-                  setUser(null)
-                  setSession(null)
-                  supabase.auth.signOut().catch(() => {})
-                }
-              } else {
-                setCollaborateur(data)
-              }
-            } catch (err) {
-              clearTimeout(queryTimeout)
-              if (mounted) {
-                console.error('[Auth] fetchCollaborateur exception:', err)
-                setCollaborateur(null)
-              }
+          // INITIAL_SESSION with expired token — wait for auto-refresh
+          if (event === 'INITIAL_SESSION' && newSession.expires_at) {
+            const isExpired = newSession.expires_at * 1000 < Date.now()
+            if (isExpired) {
+              console.warn('[Auth] Expired token on init, waiting for auto-refresh...')
+              // DON'T fetch, DON'T set loading=false — wait for TOKEN_REFRESHED
+              // Safety timeout (8s) handles the case where refresh never comes
+              return
             }
+          }
+
+          // Token is valid — fetch collaborateur
+          const collab = await fetchCollab(newSession.user.id)
+          if (!mounted) return
+
+          if (collab) {
+            setCollaborateur(collab)
           } else {
             setCollaborateur(null)
+            // Auth error AFTER token refresh = session is truly dead
+            if (event === 'TOKEN_REFRESHED') {
+              console.warn('[Auth] Fetch failed after refresh, signing out')
+              setUser(null)
+              setSession(null)
+              supabase.auth.signOut().catch(() => {})
+            }
           }
-        } catch (outerErr) {
-          // Catch-all — nothing can escape
-          console.error('[Auth] Unexpected error in auth callback:', outerErr)
+        } catch (err) {
+          console.error('[Auth] callback error:', err)
           if (mounted) setCollaborateur(null)
         }
 
-        // ALWAYS set loading false after processing any event
-        if (mounted) {
-          setLoading(false)
-          clearTimeout(safetyTimeout)
-        }
+        done()
       }
     )
 
