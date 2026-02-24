@@ -18,6 +18,7 @@ export default function PermanenceDetailPage() {
   const [occurrence, setOccurrence] = useState<PermanenceOccurrence | null>(null)
   const [allCollaborateurs, setAllCollaborateurs] = useState<Collaborateur[]>([])
   const [showAssignForm, setShowAssignForm] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -152,14 +153,27 @@ export default function PermanenceDetailPage() {
   }
 
   const cancelOccurrence = async () => {
-    if (!occurrence || !confirm('Annuler cette permanence ?')) return
+    if (!occurrence) return
     try {
       const { error: updateErr } = await supabase.from('permanence_occurrences').update({ annulee: true }).eq('id', occurrence.id)
       if (updateErr) throw updateErr
+      setShowCancelConfirm(false)
       await fetchOccurrence()
     } catch (err: any) {
       console.error('cancelOccurrence error:', err)
       setError(err.message || 'Erreur lors de l\'annulation')
+    }
+  }
+
+  const restoreOccurrence = async () => {
+    if (!occurrence) return
+    try {
+      const { error: updateErr } = await supabase.from('permanence_occurrences').update({ annulee: false }).eq('id', occurrence.id)
+      if (updateErr) throw updateErr
+      await fetchOccurrence()
+    } catch (err: any) {
+      console.error('restoreOccurrence error:', err)
+      setError(err.message || 'Erreur lors du rétablissement')
     }
   }
 
@@ -201,8 +215,13 @@ export default function PermanenceDetailPage() {
             </div>
           </div>
           {isAdmin && !occurrence.annulee && (
-            <button onClick={cancelOccurrence} className="btn-danger btn-sm">
+            <button onClick={() => setShowCancelConfirm(true)} className="btn-danger btn-sm">
               <Ban className="w-4 h-4 mr-1" /> Annuler
+            </button>
+          )}
+          {isAdmin && occurrence.annulee && (
+            <button onClick={restoreOccurrence} className="btn-primary btn-sm">
+              <CheckCircle className="w-4 h-4 mr-1" /> Rétablir
             </button>
           )}
         </div>
@@ -303,6 +322,35 @@ export default function PermanenceDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Cancel confirmation modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <AlertCircle className="w-8 h-8 flex-shrink-0" />
+              <h3 className="text-lg font-bold">Annuler cette permanence ?</h3>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Vous êtes sur le point d'annuler la permanence <strong>{occurrence.permanences?.nom}</strong> du{' '}
+              <strong>{format(new Date(occurrence.date), 'EEEE d MMMM yyyy', { locale: fr })}</strong> ({occurrence.heure_debut.slice(0, 5)} - {occurrence.heure_fin.slice(0, 5)}).
+            </p>
+            {occurrence.permanence_assignments && occurrence.permanence_assignments.length > 0 && (
+              <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                {occurrence.permanence_assignments.length} personne(s) assignée(s) seront impactées.
+              </p>
+            )}
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setShowCancelConfirm(false)} className="btn-secondary">
+                Non, garder
+              </button>
+              <button onClick={cancelOccurrence} className="btn-danger">
+                <Ban className="w-4 h-4 mr-1" /> Oui, annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
