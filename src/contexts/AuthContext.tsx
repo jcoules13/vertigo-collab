@@ -96,12 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setCollaborateur(collab)
           } else {
             setCollaborateur(null)
-            // Auth error AFTER token refresh = session is truly dead
             if (event === 'TOKEN_REFRESHED') {
-              console.warn('[Auth] Fetch failed after refresh, signing out')
-              setUser(null)
-              setSession(null)
-              supabase.auth.signOut().catch(() => {})
+              console.warn('[Auth] Fetch failed after refresh — will retry via ProtectedRoute')
             }
           }
         } catch (err) {
