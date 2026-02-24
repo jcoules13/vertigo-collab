@@ -25,13 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    // Safety timeout (8s) — guarantees loading=false if everything hangs
+    // Safety timeout (15s) — guarantees loading=false if everything hangs
     const safetyTimeout = setTimeout(() => {
       if (mounted) {
-        console.warn('[Auth] Safety timeout 8s — forcing loading=false')
+        console.warn('[Auth] Safety timeout 15s — forcing loading=false')
         setLoading(false)
       }
-    }, 8000)
+    }, 15000)
 
     const done = () => {
       if (mounted) {
@@ -41,19 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const fetchCollab = async (userId: string): Promise<Collaborateur | null> => {
-      // Promise.race with 5s timeout (more reliable than AbortController)
-      const query = supabase
+      const { data, error } = await supabase
         .from('collaborateurs')
         .select('*')
         .eq('user_id', userId)
         .eq('actif', true)
         .single()
-
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Query timeout')), 5000)
-      )
-
-      const { data, error } = await Promise.race([query, timeout])
 
       if (error) {
         console.error('[Auth] fetchCollaborateur error:', error)
@@ -83,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (isExpired) {
               console.warn('[Auth] Expired token on init, waiting for auto-refresh...')
               // DON'T fetch, DON'T set loading=false — wait for TOKEN_REFRESHED
-              // Safety timeout (8s) handles the case where refresh never comes
+              // Safety timeout (15s) handles the case where refresh never comes
               return
             }
           }
