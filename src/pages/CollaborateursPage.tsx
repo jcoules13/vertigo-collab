@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { Collaborateur } from '../types/database'
 
 export default function CollaborateursPage() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, collaborateur: currentCollab } = useAuth()
   const [collaborateurs, setCollaborateurs] = useState<Collaborateur[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -108,7 +108,24 @@ export default function CollaborateursPage() {
     }
   }
 
+  const isProtected = (c: Collaborateur) => {
+    // Can't deactivate yourself
+    if (c.id === currentCollab?.id) return true
+    // Can't deactivate the last active admin
+    if (c.actif && c.role_asso === 'admin') {
+      const activeAdmins = collaborateurs.filter(x => x.actif && x.role_asso === 'admin')
+      if (activeAdmins.length <= 1) return true
+    }
+    return false
+  }
+
   const toggleActif = async (c: Collaborateur) => {
+    if (c.actif && isProtected(c)) {
+      setError(c.id === currentCollab?.id
+        ? 'Vous ne pouvez pas désactiver votre propre compte.'
+        : 'Impossible de désactiver le dernier administrateur actif.')
+      return
+    }
     try {
       const { error } = await supabase
         .from('collaborateurs')
@@ -242,9 +259,11 @@ export default function CollaborateursPage() {
                       <button onClick={() => startEdit(c)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Modifier">
                         <Edit2 className="w-4 h-4 text-gray-500" />
                       </button>
-                      <button onClick={() => toggleActif(c)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title={c.actif ? 'Désactiver' : 'Activer'}>
-                        {c.actif ? <UserX className="w-4 h-4 text-red-500" /> : <UserCheck className="w-4 h-4 text-green-500" />}
-                      </button>
+                      {!(c.actif && isProtected(c)) && (
+                        <button onClick={() => toggleActif(c)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title={c.actif ? 'Désactiver' : 'Activer'}>
+                          {c.actif ? <UserX className="w-4 h-4 text-red-500" /> : <UserCheck className="w-4 h-4 text-green-500" />}
+                        </button>
+                      )}
                     </td>
                   )}
                 </tr>
