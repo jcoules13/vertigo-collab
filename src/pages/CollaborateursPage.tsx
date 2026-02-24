@@ -17,7 +17,7 @@ export default function CollaborateursPage() {
   const [formPrenom, setFormPrenom] = useState('')
   const [formEmail, setFormEmail] = useState('')
   const [formTelephone, setFormTelephone] = useState('')
-  const [formRole, setFormRole] = useState<'admin' | 'membre' | 'benevole'>('membre')
+  const [formRole, setFormRole] = useState<'admin' | 'membre_actif' | 'benevole'>('membre_actif')
   const [formPassword, setFormPassword] = useState('')
 
   const fetchCollaborateurs = async () => {
@@ -43,7 +43,7 @@ export default function CollaborateursPage() {
     setFormPrenom('')
     setFormEmail('')
     setFormTelephone('')
-    setFormRole('membre')
+    setFormRole('membre_actif')
     setFormPassword('')
     setEditingId(null)
     setShowForm(false)
@@ -202,7 +202,7 @@ export default function CollaborateursPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rôle</label>
                   <select value={formRole} onChange={e => setFormRole(e.target.value as any)} className="input">
-                    <option value="membre">Membre</option>
+                    <option value="membre_actif">Membre Actif</option>
                     <option value="benevole">Bénévole</option>
                     <option value="admin">Administrateur</option>
                   </select>
@@ -248,7 +248,7 @@ export default function CollaborateursPage() {
                   <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{c.email}</td>
                   <td className="px-6 py-4">
                     {c.role_asso === 'admin' && <span className="badge-teal">Admin</span>}
-                    {c.role_asso === 'membre' && <span className="badge-gray">Membre</span>}
+                    {c.role_asso === 'membre_actif' && <span className="badge-blue">Membre Actif</span>}
                     {c.role_asso === 'benevole' && <span className="badge-green">Bénévole</span>}
                   </td>
                   <td className="px-6 py-4">

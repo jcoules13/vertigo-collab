@@ -5,7 +5,7 @@ export interface Collaborateur {
   prenom: string
   email: string
   telephone: string | null
-  role_asso: 'admin' | 'membre' | 'benevole'
+  role_asso: 'admin' | 'membre_actif' | 'benevole'
   avatar_url: string | null
   actif: boolean
   created_at: string
