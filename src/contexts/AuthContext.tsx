@@ -22,91 +22,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [collaborateur, setCollaborateur] = useState<Collaborateur | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    let mounted = true
-
-    // Safety timeout (15s) — guarantees loading=false if everything hangs
-    const safetyTimeout = setTimeout(() => {
-      if (mounted) {
-        console.warn('[Auth] Safety timeout 15s — forcing loading=false')
-        setLoading(false)
-      }
-    }, 15000)
-
-    const done = () => {
-      if (mounted) {
-        setLoading(false)
-        clearTimeout(safetyTimeout)
-      }
-    }
-
-    const fetchCollab = async (userId: string): Promise<Collaborateur | null> => {
+  // Fire-and-forget fetch — NEVER called with await inside onAuthStateChange
+  const fetchCollab = async (userId: string) => {
+    try {
       const { data, error } = await supabase
         .from('collaborateurs')
         .select('*')
         .eq('user_id', userId)
         .eq('actif', true)
         .single()
-
-      if (error) {
-        console.error('[Auth] fetchCollaborateur error:', error)
-        return null
+      if (!error && data) {
+        setCollaborateur(data as Collaborateur)
+      } else {
+        console.warn('[Auth] fetchCollab:', error?.message || 'no data')
       }
-      return data as Collaborateur
+    } catch (err) {
+      console.error('[Auth] fetchCollab exception:', err)
     }
+  }
 
+  useEffect(() => {
+    // 1) Initial session load — set loading=false IMMEDIATELY, fetch collab in background
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchCollab(session.user.id) // fire-and-forget — NO await
+      }
+      setLoading(false)
+    })
+
+    // 2) Auth state changes — sync state, fetch collab in background
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!mounted) return
-
-        try {
-          setSession(newSession)
-          setUser(newSession?.user ?? null)
-
-          // No session — clear and finish
-          if (!newSession?.user) {
-            setCollaborateur(null)
-            done()
-            return
-          }
-
-          // INITIAL_SESSION with expired token — wait for auto-refresh
-          if (event === 'INITIAL_SESSION' && newSession.expires_at) {
-            const isExpired = newSession.expires_at * 1000 < Date.now()
-            if (isExpired) {
-              console.warn('[Auth] Expired token on init, waiting for auto-refresh...')
-              // DON'T fetch, DON'T set loading=false — wait for TOKEN_REFRESHED
-              // Safety timeout (15s) handles the case where refresh never comes
-              return
-            }
-          }
-
-          // Token is valid — fetch collaborateur
-          const collab = await fetchCollab(newSession.user.id)
-          if (!mounted) return
-
-          if (collab) {
-            setCollaborateur(collab)
-          } else {
-            setCollaborateur(null)
-            if (event === 'TOKEN_REFRESHED') {
-              console.warn('[Auth] Fetch failed after refresh — will retry via ProtectedRoute')
-            }
-          }
-        } catch (err) {
-          console.error('[Auth] callback error:', err)
-          if (mounted) setCollaborateur(null)
+      (_event, session) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          fetchCollab(session.user.id) // fire-and-forget — NO await
+        } else {
+          setCollaborateur(null)
         }
-
-        done()
       }
     )
 
-    return () => {
-      mounted = false
-      clearTimeout(safetyTimeout)
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   const signIn = async (email: string, password: string) => {

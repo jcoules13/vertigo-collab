@@ -16,34 +16,27 @@ import DossiersPage from './pages/DossiersPage'
 import DossierDetailPage from './pages/DossierDetailPage'
 import ProfilPage from './pages/ProfilPage'
 
-const MAX_RETRIES = 3
-
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, collaborateur, loading, refreshCollaborateur, signOut } = useAuth()
-  const [retryCount, setRetryCount] = useState(0)
-  const [retrying, setRetrying] = useState(false)
+  const { user, collaborateur, loading, refreshCollaborateur } = useAuth()
+  const [retried, setRetried] = useState(false)
 
-  // Reset retry counter when collaborateur becomes available
+  // One retry after 2s if collaborateur hasn't loaded yet (fire-and-forget still in flight)
   useEffect(() => {
-    if (collaborateur) setRetryCount(0)
-  }, [collaborateur])
-
-  // Auto-retry when user exists but collaborateur is null
-  useEffect(() => {
-    if (!loading && user && !collaborateur && retryCount < MAX_RETRIES && !retrying) {
-      setRetrying(true)
-      const delay = 1000 * (retryCount + 1)
+    if (!loading && user && !collaborateur && !retried) {
       const timer = setTimeout(async () => {
         await refreshCollaborateur()
-        setRetryCount(prev => prev + 1)
-        setRetrying(false)
-      }, delay)
+        setRetried(true)
+      }, 2000)
       return () => clearTimeout(timer)
     }
-  }, [loading, user, collaborateur, retryCount, retrying, refreshCollaborateur])
+  }, [loading, user, collaborateur, retried, refreshCollaborateur])
 
-  // Loading or retrying → spinner
-  if (loading || retrying || (!collaborateur && user && retryCount < MAX_RETRIES)) {
+  // Reset when collaborateur arrives
+  useEffect(() => {
+    if (collaborateur) setRetried(false)
+  }, [collaborateur])
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
@@ -53,23 +46,25 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) return <Navigate to="/login" replace />
 
-  // After MAX_RETRIES failed → friendly error with retry button
+  // Collaborateur not loaded yet — brief spinner while fire-and-forget completes
+  if (!collaborateur && !retried) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    )
+  }
+
+  // After retry, still null → genuine missing profile
   if (!collaborateur) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Connexion interrompue</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Profil introuvable</h2>
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Impossible de charger votre profil. Vérifiez votre connexion internet.
+            Votre compte n'est pas associé à un profil collaborateur.
+            Contactez l'administrateur.
           </p>
-          <div className="flex gap-3 justify-center">
-            <button onClick={() => setRetryCount(0)} className="btn-primary">
-              Réessayer
-            </button>
-            <button onClick={() => signOut()} className="btn-secondary">
-              Se déconnecter
-            </button>
-          </div>
         </div>
       </div>
     )
