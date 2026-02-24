@@ -20,30 +20,38 @@ export default function PermanenceDetailPage() {
   const [showAssignForm, setShowAssignForm] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const fetchOccurrence = async () => {
     if (!id) return
     try {
-      const { data } = await supabase
+      const { data, error: fetchErr } = await supabase
         .from('permanence_occurrences')
         .select('*, permanences(nom, lieu), permanence_assignments(id, statut, collaborateur_id, notifie_at, confirme_at, collaborateurs(id, prenom, nom, email))')
         .eq('id', id)
         .single()
+      if (fetchErr) throw fetchErr
       setOccurrence(data)
-    } catch (err) {
+    } catch (err: any) {
       console.error('PermanenceDetailPage fetch error:', err)
+      setError(err.message || 'Erreur lors du chargement de la permanence')
     } finally {
       setLoading(false)
     }
   }
 
   const fetchCollaborateurs = async () => {
-    const { data } = await supabase
-      .from('collaborateurs')
-      .select('*')
-      .eq('actif', true)
-      .order('nom')
-    setAllCollaborateurs(data || [])
+    try {
+      const { data, error: fetchErr } = await supabase
+        .from('collaborateurs')
+        .select('*')
+        .eq('actif', true)
+        .order('nom')
+      if (fetchErr) throw fetchErr
+      setAllCollaborateurs(data || [])
+    } catch (err: any) {
+      console.error('fetchCollaborateurs error:', err)
+    }
   }
 
   useEffect(() => {
@@ -57,10 +65,11 @@ export default function PermanenceDetailPage() {
     if (!assignment) return
 
     try {
-      await supabase
+      const { error: updateErr } = await supabase
         .from('permanence_assignments')
         .update({ statut, confirme_at: new Date().toISOString() })
         .eq('id', assignment.id)
+      if (updateErr) throw updateErr
 
       try {
         const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
@@ -73,12 +82,13 @@ export default function PermanenceDetailPage() {
             collaborateur_id: collaborateur.id,
             statut,
           }),
-        })
-      } catch {}
+        }).catch(err => console.warn('[Webhook] non-blocking error:', err))
+      } catch (err) { console.warn('[Webhook] non-blocking error:', err) }
 
       await fetchOccurrence()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleConfirm error:', err)
+      setError(err.message || 'Erreur lors de la confirmation')
     }
   }
 
@@ -90,7 +100,7 @@ export default function PermanenceDetailPage() {
       const newIds = selectedIds.filter(id => !existingIds.has(id))
 
       if (newIds.length > 0) {
-        await supabase.from('permanence_assignments').insert(
+        const { error: insertErr } = await supabase.from('permanence_assignments').insert(
           newIds.map(cid => ({
             occurrence_id: occurrence.id,
             collaborateur_id: cid,
@@ -98,6 +108,7 @@ export default function PermanenceDetailPage() {
             confirme_at: new Date().toISOString(),
           }))
         )
+        if (insertErr) throw insertErr
 
         try {
           const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
@@ -113,15 +124,16 @@ export default function PermanenceDetailPage() {
               permanence_nom: occurrence.permanences?.nom,
               lieu: occurrence.permanences?.lieu,
             }),
-          })
-        } catch {}
+          }).catch(err => console.warn('[Webhook] non-blocking error:', err))
+        } catch (err) { console.warn('[Webhook] non-blocking error:', err) }
       }
 
       setShowAssignForm(false)
       setSelectedIds([])
       await fetchOccurrence()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleAssign error:', err)
+      setError(err.message || 'Erreur lors de l\'assignation')
     } finally {
       setSaving(false)
     }
@@ -130,20 +142,24 @@ export default function PermanenceDetailPage() {
   const removeAssignment = async (assignmentId: string) => {
     if (!confirm('Retirer cette personne de la permanence ?')) return
     try {
-      await supabase.from('permanence_assignments').delete().eq('id', assignmentId)
+      const { error: deleteErr } = await supabase.from('permanence_assignments').delete().eq('id', assignmentId)
+      if (deleteErr) throw deleteErr
       await fetchOccurrence()
-    } catch (err) {
+    } catch (err: any) {
       console.error('removeAssignment error:', err)
+      setError(err.message || 'Erreur lors du retrait')
     }
   }
 
   const cancelOccurrence = async () => {
     if (!occurrence || !confirm('Annuler cette permanence ?')) return
     try {
-      await supabase.from('permanence_occurrences').update({ annulee: true }).eq('id', occurrence.id)
+      const { error: updateErr } = await supabase.from('permanence_occurrences').update({ annulee: true }).eq('id', occurrence.id)
+      if (updateErr) throw updateErr
       await fetchOccurrence()
-    } catch (err) {
+    } catch (err: any) {
       console.error('cancelOccurrence error:', err)
+      setError(err.message || 'Erreur lors de l\'annulation')
     }
   }
 
@@ -162,6 +178,10 @@ export default function PermanenceDetailPage() {
       <button onClick={() => navigate('/permanences')} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
         <ArrowLeft className="w-4 h-4" /> Retour aux permanences
       </button>
+
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
 
       <div className="card">
         <div className="card-header flex items-center justify-between">

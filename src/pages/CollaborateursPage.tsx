@@ -22,13 +22,15 @@ export default function CollaborateursPage() {
 
   const fetchCollaborateurs = async () => {
     try {
-      const { data } = await supabase
+      const { data, error: fetchErr } = await supabase
         .from('collaborateurs')
         .select('*')
         .order('nom', { ascending: true })
+      if (fetchErr) throw fetchErr
       setCollaborateurs(data || [])
-    } catch (err) {
+    } catch (err: any) {
       console.error('CollaborateursPage fetch error:', err)
+      setError(err.message || 'Erreur lors du chargement des collaborateurs')
     } finally {
       setLoading(false)
     }

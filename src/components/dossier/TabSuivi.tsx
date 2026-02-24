@@ -110,7 +110,7 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
         if (dossier.usager_email) {
           const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
           try {
-            await fetch(`${webhookUrl}/collab-rdv-confirm`, {
+            const res = await fetch(`${webhookUrl}/collab-rdv-confirm`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -123,7 +123,7 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
                 referent_nom: collaborateurNom,
               }),
             })
-            setEmailSent(true)
+            if (res.ok) setEmailSent(true)
           } catch (err) {
             console.warn('[Webhook] non-blocking error:', err)
           }

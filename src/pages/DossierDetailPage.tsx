@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { DossierSuivi, Collaborateur, STATUT_DOSSIER_LABELS } from '../types/database'
+import { DossierSuivi, Collaborateur, Piliers, STATUT_DOSSIER_LABELS } from '../types/database'
 
 import TabIdentite from '../components/dossier/TabIdentite'
 import TabConsentement from '../components/dossier/TabConsentement'
@@ -66,8 +66,8 @@ function getCompletionIndicator(dossier: DossierSuivi, tabId: TabId): 'empty' | 
     case 'piliers': {
       const p = dossier.piliers
       if (!p) return 'empty'
-      const filled = ['communication', 'administratif', 'social', 'bien_etre']
-        .filter(k => (p as any)[k]?.niveau !== null).length
+      const pilierKeys: Array<keyof Piliers> = ['communication', 'administratif', 'social', 'bien_etre']
+      const filled = pilierKeys.filter(k => p[k]?.niveau !== null).length
       return filled === 0 ? 'empty' : filled === 4 ? 'done' : 'partial'
     }
     case 'plan':
@@ -101,6 +101,7 @@ export default function DossierDetailPage() {
   const [dossier, setDossier] = useState<DossierSuivi | null>(null)
   const [collaborateurs, setCollaborateurs] = useState<Collaborateur[]>([])
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const activeTab = (searchParams.get('tab') as TabId) || 'identite'
   const setActiveTab = (tab: TabId) => setSearchParams({ tab })
@@ -108,14 +109,16 @@ export default function DossierDetailPage() {
   const fetchDossier = async () => {
     if (!id) return
     try {
-      const { data } = await supabase
+      const { data, error: fetchErr } = await supabase
         .from('dossiers_suivi')
         .select('*, collaborateurs!cree_par(prenom, nom), responsable:collaborateurs!responsable_id(id, prenom, nom)')
         .eq('id', id)
         .single()
+      if (fetchErr) throw fetchErr
       setDossier(data)
-    } catch (err) {
+    } catch (err: any) {
       console.error('fetchDossier error:', err)
+      setError(err.message || 'Erreur lors du chargement du dossier')
     } finally {
       setLoading(false)
     }
@@ -123,9 +126,10 @@ export default function DossierDetailPage() {
 
   const fetchCollaborateurs = async () => {
     try {
-      const { data } = await supabase.from('collaborateurs').select('*').eq('actif', true).order('nom')
+      const { data, error: fetchErr } = await supabase.from('collaborateurs').select('*').eq('actif', true).order('nom')
+      if (fetchErr) throw fetchErr
       setCollaborateurs(data || [])
-    } catch (err) {
+    } catch (err: any) {
       console.error('fetchCollaborateurs error:', err)
     }
   }
@@ -139,13 +143,15 @@ export default function DossierDetailPage() {
     if (!id) return
     setSaving(true)
     try {
-      await supabase.from('dossiers_suivi').update({
+      const { error: updateErr } = await supabase.from('dossiers_suivi').update({
         ...updates,
         updated_at: new Date().toISOString(),
       } as any).eq('id', id)
+      if (updateErr) throw updateErr
       await fetchDossier()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleTabSave error:', err)
+      setError(err.message || 'Erreur lors de la sauvegarde')
     } finally {
       setSaving(false)
     }
@@ -154,26 +160,30 @@ export default function DossierDetailPage() {
   const handleChangeStatut = async (newStatut: DossierSuivi['statut']) => {
     if (!id) return
     try {
-      await supabase.from('dossiers_suivi').update({
+      const { error: updateErr } = await supabase.from('dossiers_suivi').update({
         statut: newStatut,
         updated_at: new Date().toISOString(),
       }).eq('id', id)
+      if (updateErr) throw updateErr
       await fetchDossier()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleChangeStatut error:', err)
+      setError(err.message || 'Erreur lors du changement de statut')
     }
   }
 
   const handleAttribuer = async () => {
     if (!id || !collaborateur) return
     try {
-      await supabase.from('dossiers_suivi').update({
+      const { error: updateErr } = await supabase.from('dossiers_suivi').update({
         responsable_id: collaborateur.id,
         updated_at: new Date().toISOString(),
       }).eq('id', id)
+      if (updateErr) throw updateErr
       await fetchDossier()
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleAttribuer error:', err)
+      setError(err.message || 'Erreur lors de l\'attribution')
     }
   }
 
@@ -196,6 +206,10 @@ export default function DossierDetailPage() {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm rounded-lg">{error}</div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/dossiers')} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">

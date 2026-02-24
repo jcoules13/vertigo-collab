@@ -12,14 +12,16 @@ export default function ProfilPage() {
   const [nom, setNom] = useState(collaborateur?.nom || '')
   const [prenom, setPrenom] = useState(collaborateur?.prenom || '')
   const [telephone, setTelephone] = useState(collaborateur?.telephone || '')
+  const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
-    if (collaborateur) {
+    if (collaborateur && !initialized) {
       setNom(collaborateur.nom)
       setPrenom(collaborateur.prenom)
       setTelephone(collaborateur.telephone || '')
+      setInitialized(true)
     }
-  }, [collaborateur])
+  }, [collaborateur, initialized])
 
   const [newPassword, setNewPassword] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
