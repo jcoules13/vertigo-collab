@@ -55,3 +55,11 @@
     @apply badge bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200;
   }
 }
+
+@keyframes pulse-conflict {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; transform: scale(1.05); }
+}
+.animate-pulse-conflict {
+  animation: pulse-conflict 2s ease-in-out infinite;
+}

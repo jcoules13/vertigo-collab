@@ -227,6 +227,25 @@ export const STATUT_DOSSIER_LABELS: Record<DossierSuivi['statut'], string> = {
   clos: 'Clos',
 }
 
+export interface ActiveConflict {
+  collaborateur_id: string
+  collaborateur_nom: string
+  collaborateur_prenom: string
+  occurrence_id: string
+  assignment_id: string
+  permanence_nom: string
+  permanence_lieu: string | null
+  perm_date: string
+  perm_debut: string
+  perm_fin: string
+  rdv_id: string
+  rdv_titre: string
+  rdv_debut: string
+  rdv_fin: string
+  overlap_start: string
+  overlap_end: string
+}
+
 export const JOURS_SEMAINE = [
   'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
 ] as const
