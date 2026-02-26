@@ -210,7 +210,27 @@ export interface Seance {
   redige_par: string
   created_at: string
   updated_at: string
+  // Audio transcription
+  audio_path: string | null
+  audio_duration_seconds: number | null
+  transcription_brute: string | null
+  transcription_status: 'none' | 'uploading' | 'transcribing' | 'summarizing' | 'ready' | 'validated' | 'error'
+  transcription_error: string | null
+  consent_enregistrement: boolean
+  audio_uploaded_at: string | null
+  validated_at: string | null
+  audio_deleted_at: string | null
   collaborateurs?: Collaborateur
+}
+
+export const TRANSCRIPTION_STATUS_LABELS: Record<Seance['transcription_status'], string> = {
+  none: 'Pas d\'enregistrement',
+  uploading: 'Envoi en cours...',
+  transcribing: 'Transcription en cours...',
+  summarizing: 'G\u00e9n\u00e9ration du r\u00e9sum\u00e9...',
+  ready: 'Transcription pr\u00eate',
+  validated: 'Valid\u00e9e',
+  error: 'Erreur',
 }
 
 export interface DossierReservation {

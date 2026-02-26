@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Save, Loader2, CheckCircle } from 'lucide-react'
+import { Plus, Edit2, Save, Loader2, CheckCircle, Mic } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { DossierSuivi, Seance } from '../../types/database'
+import { DossierSuivi, Seance, TRANSCRIPTION_STATUS_LABELS } from '../../types/database'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import AudioRecorder from './AudioRecorder'
 
 interface Props {
   dossier: DossierSuivi
@@ -152,11 +153,22 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
               <div key={seance.id} className="relative pl-6 border-l-2 border-primary-200 dark:border-primary-800">
                 <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-primary-600 border-2 border-white dark:border-gray-900" />
                 <div className="pb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
                     <span className="font-medium text-gray-900 dark:text-white">
                       {format(new Date(seance.date), 'd MMMM yyyy', { locale: fr })}
                     </span>
                     {auteur && <span>par {auteur.prenom} {auteur.nom}</span>}
+                    {seance.transcription_status && seance.transcription_status !== 'none' && (
+                      <span className={`badge ${
+                        seance.transcription_status === 'validated' ? 'badge-green' :
+                        seance.transcription_status === 'ready' ? 'badge-teal' :
+                        seance.transcription_status === 'error' ? 'badge-red' :
+                        'badge-blue'
+                      }`}>
+                        <Mic className="w-3 h-3 mr-0.5 inline" />
+                        {TRANSCRIPTION_STATUS_LABELS[seance.transcription_status]}
+                      </span>
+                    )}
                     {seance.redige_par === collaborateurId && !isEditing && (
                       <button
                         onClick={() => { setEditingId(seance.id); setEditResume(seance.resume); setEditActions(seance.actions_prevues || '') }}
@@ -185,6 +197,16 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
                         <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/10 rounded text-sm text-yellow-800 dark:text-yellow-300">
                           <CheckCircle className="w-3.5 h-3.5 inline mr-1" />
                           <strong>Actions prévues :</strong> {seance.actions_prevues}
+                        </div>
+                      )}
+                      {/* Audio transcription */}
+                      {(seance.transcription_status !== 'none' || seance.consent_enregistrement) && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                          <AudioRecorder
+                            seance={seance}
+                            dossierId={dossier.id}
+                            onStatusChange={fetchSeances}
+                          />
                         </div>
                       )}
                     </>
