@@ -119,8 +119,8 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
       }, 1000)
     } catch (err: any) {
       setUploadError(err.message?.includes('Permission denied') || err.name === 'NotAllowedError'
-        ? 'Acc\u00e8s au microphone refus\u00e9. V\u00e9rifiez les permissions de votre navigateur.'
-        : 'Impossible d\'acc\u00e9der au microphone : ' + (err.message || err))
+        ? 'Accès au microphone refusé. Vérifiez les permissions de votre navigateur.'
+        : 'Impossible d\'accéder au microphone : ' + (err.message || err))
     }
   }, [])
 
@@ -234,10 +234,10 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <span className="badge-green"><CheckCircle className="w-3 h-3 mr-1 inline" />Transcription valid\u00e9e</span>
+          <span className="badge-green"><CheckCircle className="w-3 h-3 mr-1 inline" />Transcription validée</span>
           {seance.audio_duration_seconds && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Dur\u00e9e : {formatTime(seance.audio_duration_seconds)}
+              Durée : {formatTime(seance.audio_duration_seconds)}
             </span>
           )}
         </div>
@@ -266,10 +266,10 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <span className="badge-green">Transcription pr\u00eate</span>
+          <span className="badge-green">Transcription prête</span>
           {seance.audio_duration_seconds && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Dur\u00e9e : {formatTime(seance.audio_duration_seconds)}
+              Durée : {formatTime(seance.audio_duration_seconds)}
             </span>
           )}
         </div>
@@ -278,7 +278,7 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
           <div className="flex items-center gap-2">
             <button onClick={async () => { await loadAudioPlayback(); togglePlay() }} className="btn-secondary btn-sm">
               {playing ? <Pause className="w-3.5 h-3.5 mr-1" /> : <Play className="w-3.5 h-3.5 mr-1" />}
-              {playing ? 'Pause' : '\u00c9couter'}
+              {playing ? 'Pause' : 'Écouter'}
             </button>
             {audioUrl && (
               <audio ref={audioRef} src={audioUrl} onEnded={() => setPlaying(false)} />
@@ -308,7 +308,7 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
             <CheckCircle className="w-4 h-4 mr-1" /> Valider et supprimer l'audio
           </button>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            L'audio sera supprim\u00e9 d\u00e9finitivement
+            L'audio sera supprimé définitivement
           </span>
         </div>
       </div>
@@ -324,7 +324,7 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
           <span className="badge-blue">{TRANSCRIPTION_STATUS_LABELS[status]}</span>
           {seance.audio_duration_seconds && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Dur\u00e9e de l'enregistrement : {formatTime(seance.audio_duration_seconds)}
+              Durée de l'enregistrement : {formatTime(seance.audio_duration_seconds)}
             </p>
           )}
         </div>
@@ -356,7 +356,7 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
           }}
           className="btn-secondary btn-sm"
         >
-          <RotateCcw className="w-3.5 h-3.5 mr-1" /> R\u00e9essayer
+          <RotateCcw className="w-3.5 h-3.5 mr-1" /> Réessayer
         </button>
       </div>
     )
@@ -374,7 +374,7 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
           className="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
         />
         <span className="text-sm text-gray-700 dark:text-gray-300">
-          L'usager consent \u00e0 l'enregistrement audio de cet entretien
+          L'usager consent à l'enregistrement audio de cet entretien
         </span>
       </label>
 
@@ -402,11 +402,11 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
           </span>
           {elapsed >= WARN_DURATION && (
             <span className="text-xs text-yellow-600 dark:text-yellow-400">
-              Dur\u00e9e max : {formatTime(MAX_DURATION)}
+              Durée max : {formatTime(MAX_DURATION)}
             </span>
           )}
           <button onClick={stopRecording} className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg hover:bg-gray-900 text-sm">
-            <Square className="w-3.5 h-3.5" /> Arr\u00eater
+            <Square className="w-3.5 h-3.5" /> Arrêter
           </button>
         </div>
       )}
@@ -416,7 +416,7 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
         <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
           <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <Mic className="w-4 h-4" />
-            Enregistrement termin\u00e9 — {formatTime(elapsed)}
+            Enregistrement terminé — {formatTime(elapsed)}
           </div>
           <div className="flex gap-2">
             <button onClick={uploadAndTranscribe} className="btn-primary text-sm">
