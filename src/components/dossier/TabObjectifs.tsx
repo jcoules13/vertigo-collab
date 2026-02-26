@@ -19,6 +19,11 @@ export default function TabObjectifs({ dossier, onSave, saving }: Props) {
     setObj3(dossier.objectif_3 || '')
   }, [dossier])
 
+  const isDirty =
+    obj1 !== (dossier.objectif_1 || '') ||
+    obj2 !== (dossier.objectif_2 || '') ||
+    obj3 !== (dossier.objectif_3 || '')
+
   const handleSave = () => {
     onSave({
       objectif_1: obj1.trim() || null,
@@ -69,12 +74,14 @@ export default function TabObjectifs({ dossier, onSave, saving }: Props) {
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </button>
-      </div>
+      {isDirty && (
+        <div className="flex justify-end pt-2">
+          <button onClick={handleSave} disabled={saving} className="btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Mettre à jour
+          </button>
+        </div>
+      )}
     </div>
   )
 }

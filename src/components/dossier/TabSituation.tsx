@@ -51,6 +51,12 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
     setProfessionnelle(dossier.situation_professionnelle || [])
   }, [dossier])
 
+  const isDirty =
+    JSON.stringify([...personnelle].sort()) !== JSON.stringify([...(dossier.situation_personnelle || [])].sort()) ||
+    JSON.stringify([...familiale].sort()) !== JSON.stringify([...(dossier.situation_familiale || [])].sort()) ||
+    JSON.stringify([...financiere].sort()) !== JSON.stringify([...(dossier.situation_financiere || [])].sort()) ||
+    JSON.stringify([...professionnelle].sort()) !== JSON.stringify([...(dossier.situation_professionnelle || [])].sort())
+
   const handleSave = () => {
     onSave({
       situation_personnelle: personnelle,
@@ -71,12 +77,14 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
         <CheckboxGroup label="Situation professionnelle" options={SITUATION_PROFESSIONNELLE_OPTIONS} selected={professionnelle} onChange={setProfessionnelle} />
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </button>
-      </div>
+      {isDirty && (
+        <div className="flex justify-end pt-2">
+          <button onClick={handleSave} disabled={saving} className="btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Mettre à jour
+          </button>
+        </div>
+      )}
     </div>
   )
 }

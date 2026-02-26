@@ -30,6 +30,10 @@ export default function TabDroits({ dossier, onSave, saving }: Props) {
     setCommentaires(dossier.droits_commentaires || '')
   }, [dossier])
 
+  const isDirty =
+    DROITS_FIELDS.some(f => (droits[f.key] || false) !== ((dossier as any)[f.key] || false)) ||
+    commentaires !== (dossier.droits_commentaires || '')
+
   const handleSave = () => {
     onSave({
       ...droits,
@@ -66,12 +70,14 @@ export default function TabDroits({ dossier, onSave, saving }: Props) {
         />
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </button>
-      </div>
+      {isDirty && (
+        <div className="flex justify-end pt-2">
+          <button onClick={handleSave} disabled={saving} className="btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Mettre à jour
+          </button>
+        </div>
+      )}
     </div>
   )
 }

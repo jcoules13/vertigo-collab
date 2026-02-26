@@ -33,6 +33,8 @@ export default function TabEvaluation({ dossier, onSave, saving }: Props) {
     setValues(v)
   }, [dossier])
 
+  const isDirty = EVAL_FIELDS.some(f => (values[f.key] ?? null) !== (dossier[f.key] ?? null))
+
   const handleSave = () => {
     onSave(values as any)
   }
@@ -72,12 +74,14 @@ export default function TabEvaluation({ dossier, onSave, saving }: Props) {
         })}
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </button>
-      </div>
+      {isDirty && (
+        <div className="flex justify-end pt-2">
+          <button onClick={handleSave} disabled={saving} className="btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Mettre à jour
+          </button>
+        </div>
+      )}
     </div>
   )
 }

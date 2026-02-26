@@ -18,6 +18,8 @@ export default function TabObservations({ dossier, onSave, saving, collaborateur
     setObservations(dossier.observations || '')
   }, [dossier])
 
+  const isDirty = observations !== (dossier.observations || '')
+
   const handleSave = () => {
     onSave({
       observations: observations.trim() || null,
@@ -51,12 +53,14 @@ export default function TabObservations({ dossier, onSave, saving, collaborateur
         />
       </div>
 
-      <div className="flex justify-end">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </button>
-      </div>
+      {isDirty && (
+        <div className="flex justify-end">
+          <button onClick={handleSave} disabled={saving} className="btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Mettre à jour
+          </button>
+        </div>
+      )}
 
       {/* Signatures */}
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">

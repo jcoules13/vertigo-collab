@@ -36,6 +36,13 @@ export default function TabPlanActions({ dossier, onSave, saving, collaborateurs
     setActions(prev => prev.filter((_, i) => i !== index))
   }
 
+  const getOriginalActions = (): PlanAction[] => {
+    const pa = dossier.plan_actions
+    return (Array.isArray(pa) && pa.length > 0) ? pa : [{ ...EMPTY_ACTION }]
+  }
+
+  const isDirty = JSON.stringify(actions) !== JSON.stringify(getOriginalActions())
+
   const handleSave = () => {
     const cleaned = actions.filter(a => a.action.trim() || a.responsable.trim())
     onSave({ plan_actions: cleaned.length > 0 ? cleaned : [] })
@@ -111,12 +118,14 @@ export default function TabPlanActions({ dossier, onSave, saving, collaborateurs
         <Plus className="w-4 h-4 mr-1" /> Ajouter une action
       </button>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </button>
-      </div>
+      {isDirty && (
+        <div className="flex justify-end pt-2">
+          <button onClick={handleSave} disabled={saving} className="btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Mettre à jour
+          </button>
+        </div>
+      )}
     </div>
   )
 }

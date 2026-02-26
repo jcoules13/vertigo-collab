@@ -29,6 +29,16 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
     setPrevTel(dossier.personne_prevenir_telephone || '')
   }, [dossier])
 
+  const isDirty =
+    nom !== (dossier.usager_nom || '') ||
+    prenom !== (dossier.usager_prenom || '') ||
+    dateNaissance !== (dossier.usager_date_naissance || '') ||
+    telephone !== (dossier.usager_telephone || '') ||
+    email !== (dossier.usager_email || '') ||
+    adresse !== (dossier.usager_adresse || '') ||
+    prevNom !== (dossier.personne_prevenir_nom || '') ||
+    prevTel !== (dossier.personne_prevenir_telephone || '')
+
   const handleSave = () => {
     onSave({
       usager_nom: nom.trim(),
@@ -88,12 +98,14 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={handleSave} disabled={saving || !nom.trim()} className="btn-primary">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </button>
-      </div>
+      {isDirty && (
+        <div className="flex justify-end pt-2">
+          <button onClick={handleSave} disabled={saving || !nom.trim()} className="btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Mettre à jour
+          </button>
+        </div>
+      )}
     </div>
   )
 }

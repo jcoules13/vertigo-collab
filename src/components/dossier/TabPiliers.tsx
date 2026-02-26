@@ -104,6 +104,21 @@ export default function TabPiliers({ dossier, onSave, saving }: Props) {
     setPiliers(prev => ({ ...prev, [key]: pilier }))
   }
 
+  const getOriginalPiliers = (): Piliers => {
+    const p = dossier.piliers
+    if (p && typeof p === 'object') {
+      return {
+        communication: { ...DEFAULT_PILIERS.communication, ...p.communication },
+        administratif: { ...DEFAULT_PILIERS.administratif, ...p.administratif },
+        social: { ...DEFAULT_PILIERS.social, ...p.social },
+        bien_etre: { ...DEFAULT_PILIERS.bien_etre, ...p.bien_etre },
+      }
+    }
+    return DEFAULT_PILIERS
+  }
+
+  const isDirty = JSON.stringify(piliers) !== JSON.stringify(getOriginalPiliers())
+
   const handleSave = () => {
     onSave({ piliers })
   }
@@ -125,12 +140,14 @@ export default function TabPiliers({ dossier, onSave, saving }: Props) {
         ))}
       </div>
 
-      <div className="flex justify-end pt-2">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Enregistrer
-        </button>
-      </div>
+      {isDirty && (
+        <div className="flex justify-end pt-2">
+          <button onClick={handleSave} disabled={saving} className="btn-primary">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Mettre à jour
+          </button>
+        </div>
+      )}
     </div>
   )
 }
