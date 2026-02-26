@@ -200,7 +200,7 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
                         </div>
                       )}
                       {/* Audio transcription */}
-                      {(seance.transcription_status !== 'none' || seance.consent_enregistrement) && (
+                      {dossier.statut !== 'clos' && (
                         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                           <AudioRecorder
                             seance={seance}
