@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarPlus, Loader2, Clock, Mail, Phone, MapPin, Check, X, MessageSquare, ExternalLink, User, FolderOpen } from 'lucide-react'
+import { CalendarPlus, Loader2, Clock, Mail, Phone, MapPin, Check, X, MessageSquare, ExternalLink, User, FolderOpen, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { ReservationExterne, CANAL_LABELS, STATUT_RESERVATION_LABELS } from '../types/database'
@@ -36,6 +36,7 @@ export default function ReservationsPage() {
   const [statutFilter, setStatutFilter] = useState<ReservationExterne['statut'] | 'tous'>('tous')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [notesEdit, setNotesEdit] = useState<{ id: string; notes: string } | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   const fetchReservations = async () => {
     try {
@@ -194,6 +195,24 @@ export default function ReservationsPage() {
     } catch (err: any) {
       console.error('handleSaveNotes error:', err)
       setError(err.message || 'Erreur lors de la sauvegarde des notes')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDelete = async (reservationId: string) => {
+    setActionLoading(reservationId)
+    try {
+      const { error: delErr } = await supabase
+        .from('reservations_externes')
+        .delete()
+        .eq('id', reservationId)
+      if (delErr) throw delErr
+      setDeleteConfirm(null)
+      await fetchReservations()
+    } catch (err: any) {
+      console.error('handleDelete error:', err)
+      setError(err.message || 'Erreur lors de la suppression')
     } finally {
       setActionLoading(null)
     }
@@ -381,6 +400,33 @@ export default function ReservationsPage() {
                           <FolderOpen className="w-4 h-4 mr-1" /> Dossier
                         </Link>
                       ) : null}
+                      {res.statut === 'annulee' && !dossierId && (
+                        deleteConfirm === res.id ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-red-500 mr-1">Confirmer ?</span>
+                            <button
+                              onClick={() => handleDelete(res.id)}
+                              disabled={actionLoading === res.id}
+                              className="inline-flex items-center px-2 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 disabled:opacity-50"
+                            >
+                              {actionLoading === res.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Oui'}
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm(null)}
+                              className="inline-flex items-center px-2 py-1 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 text-xs font-medium rounded hover:bg-gray-300"
+                            >
+                              Non
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeleteConfirm(res.id)}
+                            className="inline-flex items-center px-3 py-1.5 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 text-sm font-medium rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" /> Supprimer
+                          </button>
+                        )
+                      )}
                     </div>
                   </div>
 
