@@ -232,9 +232,9 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
                     {seance.redige_par === collaborateurId && !isEditing && (
                       <button
                         onClick={() => { setEditingId(seance.id); setEditResume(seance.resume); setEditActions(seance.actions_prevues || '') }}
-                        className="text-primary-600 hover:underline"
+                        className="text-primary-600 hover:underline flex items-center gap-1 text-xs"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-3.5 h-3.5" /> Modifier le résumé
                       </button>
                     )}
                   </div>

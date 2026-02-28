@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Mic, Square, Loader2, Play, Pause, CheckCircle, AlertCircle, FileText, RotateCcw, Edit2, Save } from 'lucide-react'
+import { Mic, Square, Loader2, Play, Pause, CheckCircle, AlertCircle, FileText, RotateCcw, Edit2, Save, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { Seance, TRANSCRIPTION_STATUS_LABELS } from '../../types/database'
 
@@ -26,6 +26,7 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
   const [editingTranscription, setEditingTranscription] = useState(false)
   const [editTranscriptionText, setEditTranscriptionText] = useState('')
   const [savingTranscription, setSavingTranscription] = useState(false)
+  const [generatingSummary, setGeneratingSummary] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -265,6 +266,29 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
     }
   }, [editTranscriptionText, seance.id, onStatusChange])
 
+  const handleGenerateSummary = useCallback(async () => {
+    setGeneratingSummary(true)
+    try {
+      await supabase.from('seances').update({
+        transcription_status: 'summarizing',
+        updated_at: new Date().toISOString()
+      }).eq('id', seance.id)
+      onStatusChange()
+      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
+      if (webhookUrl) {
+        fetch(`${webhookUrl}/collab-seance-summarize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ seance_id: seance.id })
+        }).catch(err => console.warn('[Webhook] non-blocking error:', err))
+      }
+    } catch (err: any) {
+      console.error('Generate summary error:', err)
+    } finally {
+      setGeneratingSummary(false)
+    }
+  }, [seance.id, onStatusChange])
+
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return
     if (playing) {
@@ -377,6 +401,17 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
               )
             )}
           </div>
+        )}
+        {/* Generate AI summary */}
+        {seance.transcription_brute && (
+          <button
+            onClick={handleGenerateSummary}
+            disabled={generatingSummary}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+          >
+            {generatingSummary ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Générer le résumé IA
+          </button>
         )}
         {/* Validate button */}
         <div className="flex items-center gap-2">
