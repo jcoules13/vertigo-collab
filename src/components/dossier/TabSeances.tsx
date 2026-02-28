@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Save, Loader2, CheckCircle, Mic } from 'lucide-react'
+import { Plus, Edit2, Save, Loader2, CheckCircle, Mic, Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { DossierSuivi, Seance, TRANSCRIPTION_STATUS_LABELS } from '../../types/database'
 import { format } from 'date-fns'
@@ -23,6 +23,11 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
   const [seanceDate, setSeanceDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [seanceResume, setSeanceResume] = useState('')
   const [seanceActions, setSeanceActions] = useState('')
+  const [newSeance, setNewSeance] = useState<Seance | null>(null)
+
+  // Email
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null)
+  const [emailSentId, setEmailSentId] = useState<string | null>(null)
 
   // Edit seance
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -49,16 +54,15 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
   useEffect(() => { fetchSeances() }, [dossier.id])
 
   const handleAdd = async () => {
-    if (!seanceResume.trim()) return
     setSaving(true)
     try {
-      const { error: insertErr } = await supabase.from('seances').insert({
+      const { data: created, error: insertErr } = await supabase.from('seances').insert({
         dossier_id: dossier.id,
         date: seanceDate,
-        resume: seanceResume.trim(),
+        resume: seanceResume.trim() || '',
         actions_prevues: seanceActions.trim() || null,
         redige_par: collaborateurId,
-      })
+      }).select('*').single()
       if (insertErr) throw insertErr
       const updates: Record<string, any> = { updated_at: new Date().toISOString() }
       if (dossier.statut === 'ouvert') updates.statut = 'en_cours'
@@ -66,7 +70,7 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
       if (updateErr) throw updateErr
       setSeanceResume('')
       setSeanceActions('')
-      setShowForm(false)
+      setNewSeance(created)
       await fetchSeances()
       onDossierUpdated()
     } catch (err: any) {
@@ -75,6 +79,12 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleCloseNewSeance = () => {
+    setNewSeance(null)
+    setShowForm(false)
+    fetchSeances()
   }
 
   const handleUpdate = async (seanceId: string) => {
@@ -94,6 +104,34 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
       setError(err.message || 'Erreur lors de la modification')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSendEmail = async (seance: Seance) => {
+    if (!dossier.usager_email || !seance.resume) return
+    setSendingEmailId(seance.id)
+    const auteur = seance.collaborateurs as any as { prenom: string; nom: string } | null
+    try {
+      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
+      const res = await fetch(`${webhookUrl}/collab-seance-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usager_email: dossier.usager_email,
+          usager_nom: dossier.usager_nom,
+          usager_prenom: dossier.usager_prenom || '',
+          seance_date: seance.date,
+          resume: seance.resume,
+          actions_prevues: seance.actions_prevues || '',
+          referent_nom: auteur ? `${auteur.prenom} ${auteur.nom}` : '',
+        }),
+      })
+      if (res.ok) setEmailSentId(seance.id)
+    } catch (err) {
+      console.warn('[Webhook] email error:', err)
+      setError('Erreur lors de l\'envoi de l\'email')
+    } finally {
+      setSendingEmailId(null)
     }
   }
 
@@ -117,25 +155,47 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
       )}
 
       {/* New seance form */}
-      {showForm && (
+      {showForm && !newSeance && (
         <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
             <input type="date" value={seanceDate} onChange={e => setSeanceDate(e.target.value)} className="input w-auto" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Résumé de la séance *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Résumé de la séance</label>
             <textarea value={seanceResume} onChange={e => setSeanceResume(e.target.value)} className="input" rows={4} placeholder="Résumé de ce qui a été abordé..." />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Actions prévues</label>
             <textarea value={seanceActions} onChange={e => setSeanceActions(e.target.value)} className="input" rows={2} placeholder="Prochaines étapes..." />
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            <Mic className="w-3.5 h-3.5 inline mr-1" />
+            Vous pouvez enregistrer sans résumé : l'audio remplira le résumé automatiquement.
+          </p>
           <div className="flex gap-2">
-            <button onClick={handleAdd} disabled={saving || !seanceResume.trim()} className="btn-primary text-sm">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enregistrer'}
+            <button onClick={handleAdd} disabled={saving} className="btn-primary text-sm">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Créer la séance'}
             </button>
             <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {/* Post-creation: AudioRecorder inline */}
+      {showForm && newSeance && (
+        <div className="p-4 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-primary-700 dark:text-primary-300">
+            <CheckCircle className="w-4 h-4" />
+            Séance du {format(new Date(newSeance.date), 'd MMMM yyyy', { locale: fr })} créée
+          </div>
+          <AudioRecorder
+            seance={newSeance}
+            dossierId={dossier.id}
+            onStatusChange={() => { fetchSeances(); setNewSeance(prev => prev ? { ...prev } : null) }}
+          />
+          <div className="flex justify-end">
+            <button onClick={handleCloseNewSeance} className="btn-secondary text-sm">Fermer</button>
           </div>
         </div>
       )}
@@ -197,6 +257,28 @@ export default function TabSeances({ dossier, collaborateurId, onDossierUpdated 
                         <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/10 rounded text-sm text-yellow-800 dark:text-yellow-300">
                           <CheckCircle className="w-3.5 h-3.5 inline mr-1" />
                           <strong>Actions prévues :</strong> {seance.actions_prevues}
+                        </div>
+                      )}
+                      {/* Send email button */}
+                      {dossier.usager_email && seance.resume && (
+                        <div className="mt-2">
+                          {emailSentId === seance.id ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                              <CheckCircle className="w-3.5 h-3.5" /> Email envoyé
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleSendEmail(seance)}
+                              disabled={sendingEmailId === seance.id}
+                              className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
+                            >
+                              {sendingEmailId === seance.id ? (
+                                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Envoi...</>
+                              ) : (
+                                <><Mail className="w-3.5 h-3.5" /> Envoyer par email</>
+                              )}
+                            </button>
+                          )}
                         </div>
                       )}
                       {/* Audio transcription */}

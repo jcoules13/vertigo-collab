@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Mic, Square, Loader2, Play, Pause, CheckCircle, AlertCircle, FileText, RotateCcw } from 'lucide-react'
+import { Mic, Square, Loader2, Play, Pause, CheckCircle, AlertCircle, FileText, RotateCcw, Edit2, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { Seance, TRANSCRIPTION_STATUS_LABELS } from '../../types/database'
 
@@ -15,6 +15,7 @@ const WARN_DURATION = 60 * 60 // 60 minutes
 export default function AudioRecorder({ seance, dossierId, onStatusChange }: Props) {
   const [consent, setConsent] = useState(seance.consent_enregistrement)
   const [recording, setRecording] = useState(false)
+  const [paused, setPaused] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
@@ -22,6 +23,9 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [playing, setPlaying] = useState(false)
   const [showTranscription, setShowTranscription] = useState(false)
+  const [editingTranscription, setEditingTranscription] = useState(false)
+  const [editTranscriptionText, setEditTranscriptionText] = useState('')
+  const [savingTranscription, setSavingTranscription] = useState(false)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -124,11 +128,39 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
     }
   }, [])
 
+  const pauseRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.pause()
+      if (timerRef.current) clearInterval(timerRef.current)
+      setPaused(true)
+    }
+  }, [])
+
+  const resumeRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+      mediaRecorderRef.current.resume()
+      timerRef.current = setInterval(() => {
+        setElapsed(prev => {
+          const next = prev + 1
+          if (next >= MAX_DURATION) {
+            mediaRecorderRef.current?.stop()
+            setRecording(false)
+            setPaused(false)
+            if (timerRef.current) clearInterval(timerRef.current)
+          }
+          return next
+        })
+      }, 1000)
+      setPaused(false)
+    }
+  }, [])
+
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
     }
     setRecording(false)
+    setPaused(false)
     if (timerRef.current) clearInterval(timerRef.current)
   }, [])
 
@@ -217,6 +249,22 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
     if (data?.signedUrl) setAudioUrl(data.signedUrl)
   }, [seance.audio_path, audioUrl])
 
+  const handleSaveTranscription = useCallback(async () => {
+    setSavingTranscription(true)
+    try {
+      await supabase.from('seances').update({
+        transcription_brute: editTranscriptionText,
+        updated_at: new Date().toISOString()
+      }).eq('id', seance.id)
+      setEditingTranscription(false)
+      onStatusChange()
+    } catch (err: any) {
+      console.error('Save transcription error:', err)
+    } finally {
+      setSavingTranscription(false)
+    }
+  }, [editTranscriptionText, seance.id, onStatusChange])
+
   const togglePlay = useCallback(() => {
     if (!audioRef.current) return
     if (playing) {
@@ -288,17 +336,45 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
         {/* Transcription brute */}
         {seance.transcription_brute && (
           <div>
-            <button
-              onClick={() => setShowTranscription(!showTranscription)}
-              className="text-xs text-primary-600 hover:underline flex items-center gap-1 mb-1"
-            >
-              <FileText className="w-3 h-3" />
-              {showTranscription ? 'Masquer' : 'Voir'} la transcription brute
-            </button>
+            <div className="flex items-center gap-2 mb-1">
+              <button
+                onClick={() => setShowTranscription(!showTranscription)}
+                className="text-xs text-primary-600 hover:underline flex items-center gap-1"
+              >
+                <FileText className="w-3 h-3" />
+                {showTranscription ? 'Masquer' : 'Voir'} la transcription brute
+              </button>
+              {showTranscription && !editingTranscription && (
+                <button
+                  onClick={() => { setEditTranscriptionText(seance.transcription_brute || ''); setEditingTranscription(true) }}
+                  className="text-xs text-primary-600 hover:underline flex items-center gap-1"
+                >
+                  <Edit2 className="w-3 h-3" /> Éditer
+                </button>
+              )}
+            </div>
             {showTranscription && (
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300 max-h-60 overflow-y-auto whitespace-pre-wrap">
-                {seance.transcription_brute}
-              </div>
+              editingTranscription ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={editTranscriptionText}
+                    onChange={e => setEditTranscriptionText(e.target.value)}
+                    className="input w-full text-sm"
+                    rows={12}
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={handleSaveTranscription} disabled={savingTranscription} className="btn-primary text-sm">
+                      {savingTranscription ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                      Enregistrer
+                    </button>
+                    <button onClick={() => setEditingTranscription(false)} className="btn-secondary text-sm">Annuler</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-700 dark:text-gray-300 max-h-60 overflow-y-auto whitespace-pre-wrap">
+                  {seance.transcription_brute}
+                </div>
+              )
             )}
           </div>
         )}
@@ -395,19 +471,33 @@ export default function AudioRecorder({ seance, dossierId, onStatusChange }: Pro
 
       {/* Recording in progress */}
       {recording && (
-        <div className="flex items-center gap-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-          <span className="w-3 h-3 bg-red-600 rounded-full animate-recording" />
+        <div className={`flex items-center gap-4 p-3 rounded-lg ${paused ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+          <span className={`w-3 h-3 rounded-full ${paused ? 'bg-yellow-500' : 'bg-red-600 animate-recording'}`} />
           <span className={`font-mono text-lg ${elapsed >= WARN_DURATION ? 'text-yellow-600 dark:text-yellow-400 font-bold' : 'text-gray-900 dark:text-white'}`}>
             {formatTime(elapsed)}
           </span>
-          {elapsed >= WARN_DURATION && (
+          {paused && (
+            <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">Pause</span>
+          )}
+          {elapsed >= WARN_DURATION && !paused && (
             <span className="text-xs text-yellow-600 dark:text-yellow-400">
               Durée max : {formatTime(MAX_DURATION)}
             </span>
           )}
-          <button onClick={stopRecording} className="ml-auto inline-flex items-center gap-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg hover:bg-gray-900 text-sm">
-            <Square className="w-3.5 h-3.5" /> Arrêter
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            {paused ? (
+              <button onClick={resumeRecording} className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
+                <Play className="w-3.5 h-3.5" /> Reprendre
+              </button>
+            ) : (
+              <button onClick={pauseRecording} className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm">
+                <Pause className="w-3.5 h-3.5" /> Pause
+              </button>
+            )}
+            <button onClick={stopRecording} className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-800 text-white rounded-lg hover:bg-gray-900 text-sm">
+              <Square className="w-3.5 h-3.5" /> Arrêter
+            </button>
+          </div>
         </div>
       )}
 

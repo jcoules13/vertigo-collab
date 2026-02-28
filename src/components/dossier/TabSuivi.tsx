@@ -104,7 +104,7 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
           dossier_id: dossier.id,
           reservation_id: reservation.id,
         })
-        if (linkErr) throw linkErr
+        if (linkErr && linkErr.code !== '23505') throw linkErr
 
         // Send confirmation email via n8n (non-blocking)
         if (dossier.usager_email) {
