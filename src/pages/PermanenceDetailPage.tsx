@@ -47,7 +47,7 @@ export default function PermanenceDetailPage() {
         .from('collaborateurs')
         .select('*')
         .eq('actif', true)
-        .eq('role_asso', 'membre_actif')
+        .in('role_asso', ['admin', 'membre_actif'])
         .order('nom')
       if (fetchErr) throw fetchErr
       setAllCollaborateurs(data || [])
