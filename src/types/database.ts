@@ -150,6 +150,14 @@ export interface DossierSuivi {
   usager_adresse: string | null
   personne_prevenir_nom: string | null
   personne_prevenir_telephone: string | null
+  numero_securite_sociale: string | null
+  numero_caf: string | null
+  ancien_numero_mdph: string | null
+  representant_legal_nom: string | null
+  representant_legal_prenom: string | null
+  representant_legal_telephone: string | null
+  representant_legal_email: string | null
+  representant_legal_lien: string | null
   // Section 2: Consentement RGPD
   consent_conservation: boolean
   consent_contact: boolean

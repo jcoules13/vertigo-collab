@@ -1,11 +1,23 @@
-import { useState, useEffect } from 'react'
-import { Save, Loader2 } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Save, Loader2, Copy, AlertTriangle } from 'lucide-react'
 import { DossierSuivi } from '../../types/database'
 
 interface Props {
   dossier: DossierSuivi
   onSave: (updates: Partial<DossierSuivi>) => Promise<void>
   saving: boolean
+}
+
+const LIEN_OPTIONS = ['Père', 'Mère', 'Tuteur légal', 'Autre'] as const
+
+function computeAge(dateStr: string): number | null {
+  if (!dateStr) return null
+  const birth = new Date(dateStr)
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
 }
 
 export default function TabIdentite({ dossier, onSave, saving }: Props) {
@@ -17,6 +29,16 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
   const [adresse, setAdresse] = useState('')
   const [prevNom, setPrevNom] = useState('')
   const [prevTel, setPrevTel] = useState('')
+  // Numéros administratifs
+  const [numSecu, setNumSecu] = useState('')
+  const [numCaf, setNumCaf] = useState('')
+  const [ancienMdph, setAncienMdph] = useState('')
+  // Représentant légal
+  const [repNom, setRepNom] = useState('')
+  const [repPrenom, setRepPrenom] = useState('')
+  const [repTel, setRepTel] = useState('')
+  const [repEmail, setRepEmail] = useState('')
+  const [repLien, setRepLien] = useState('')
 
   useEffect(() => {
     setNom(dossier.usager_nom || '')
@@ -27,7 +49,20 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
     setAdresse(dossier.usager_adresse || '')
     setPrevNom(dossier.personne_prevenir_nom || '')
     setPrevTel(dossier.personne_prevenir_telephone || '')
+    setNumSecu(dossier.numero_securite_sociale || '')
+    setNumCaf(dossier.numero_caf || '')
+    setAncienMdph(dossier.ancien_numero_mdph || '')
+    setRepNom(dossier.representant_legal_nom || '')
+    setRepPrenom(dossier.representant_legal_prenom || '')
+    setRepTel(dossier.representant_legal_telephone || '')
+    setRepEmail(dossier.representant_legal_email || '')
+    setRepLien(dossier.representant_legal_lien || '')
   }, [dossier])
+
+  const isMinor = useMemo(() => {
+    const age = computeAge(dateNaissance)
+    return age !== null && age < 18
+  }, [dateNaissance])
 
   const isDirty =
     nom !== (dossier.usager_nom || '') ||
@@ -37,7 +72,15 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
     email !== (dossier.usager_email || '') ||
     adresse !== (dossier.usager_adresse || '') ||
     prevNom !== (dossier.personne_prevenir_nom || '') ||
-    prevTel !== (dossier.personne_prevenir_telephone || '')
+    prevTel !== (dossier.personne_prevenir_telephone || '') ||
+    numSecu !== (dossier.numero_securite_sociale || '') ||
+    numCaf !== (dossier.numero_caf || '') ||
+    ancienMdph !== (dossier.ancien_numero_mdph || '') ||
+    repNom !== (dossier.representant_legal_nom || '') ||
+    repPrenom !== (dossier.representant_legal_prenom || '') ||
+    repTel !== (dossier.representant_legal_telephone || '') ||
+    repEmail !== (dossier.representant_legal_email || '') ||
+    repLien !== (dossier.representant_legal_lien || '')
 
   const handleSave = () => {
     onSave({
@@ -49,7 +92,20 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
       usager_adresse: adresse.trim() || null,
       personne_prevenir_nom: prevNom.trim() || null,
       personne_prevenir_telephone: prevTel.trim() || null,
+      numero_securite_sociale: numSecu.trim() || null,
+      numero_caf: numCaf.trim() || null,
+      ancien_numero_mdph: ancienMdph.trim() || null,
+      representant_legal_nom: repNom.trim() || null,
+      representant_legal_prenom: repPrenom.trim() || null,
+      representant_legal_telephone: repTel.trim() || null,
+      representant_legal_email: repEmail.trim() || null,
+      representant_legal_lien: repLien.trim() || null,
     })
+  }
+
+  const copyContactToPrevenir = () => {
+    setPrevNom(`${prenom} ${nom}`.trim())
+    setPrevTel(telephone)
   }
 
   return (
@@ -84,8 +140,77 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
         <textarea value={adresse} onChange={e => setAdresse(e.target.value)} className="input" rows={2} placeholder="Adresse complète" />
       </div>
 
+      {/* Numéros administratifs */}
       <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Personne à prévenir</h4>
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Numéros administratifs</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">N° Sécurité sociale</label>
+            <input value={numSecu} onChange={e => setNumSecu(e.target.value)} className="input" placeholder="1 XX XX XX XXX XXX XX" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">N° CAF</label>
+            <input value={numCaf} onChange={e => setNumCaf(e.target.value)} className="input" placeholder="N° allocataire" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ancien n° MDPH</label>
+            <input value={ancienMdph} onChange={e => setAncienMdph(e.target.value)} className="input" placeholder="Si existant" />
+          </div>
+        </div>
+      </div>
+
+      {/* Détection mineur */}
+      {isMinor && (
+        <div className="border-t border-amber-300 dark:border-amber-600 pt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-400">Usager mineur — Représentant légal</h4>
+          </div>
+          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prénom</label>
+                <input value={repPrenom} onChange={e => setRepPrenom(e.target.value)} className="input" placeholder="Prénom du représentant" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom</label>
+                <input value={repNom} onChange={e => setRepNom(e.target.value)} className="input" placeholder="Nom du représentant" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Téléphone</label>
+                <input value={repTel} onChange={e => setRepTel(e.target.value)} className="input" placeholder="06 12 34 56 78" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-mail</label>
+                <input type="email" value={repEmail} onChange={e => setRepEmail(e.target.value)} className="input" placeholder="email@exemple.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lien de parenté</label>
+                <select value={repLien} onChange={e => setRepLien(e.target.value)} className="input">
+                  <option value="">— Sélectionner —</option>
+                  {LIEN_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Personne à prévenir */}
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Personne à prévenir</h4>
+          {(nom || prenom || telephone) && (
+            <button
+              type="button"
+              onClick={copyContactToPrevenir}
+              className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Reprendre les coordonnées du contact
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nom</label>
