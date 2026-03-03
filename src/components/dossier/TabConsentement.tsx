@@ -1,6 +1,16 @@
-import { useState, useEffect } from 'react'
-import { Save, Loader2, ShieldCheck } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Save, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { DossierSuivi } from '../../types/database'
+
+function computeAge(dateStr: string): number | null {
+  if (!dateStr) return null
+  const birth = new Date(dateStr)
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+  return age
+}
 
 interface Props {
   dossier: DossierSuivi
@@ -11,6 +21,11 @@ interface Props {
 export default function TabConsentement({ dossier, onSave, saving }: Props) {
   const [conservation, setConservation] = useState(false)
   const [contact, setContact] = useState(false)
+
+  const isMinor = useMemo(() => {
+    const age = computeAge(dossier.usager_date_naissance || '')
+    return age !== null && age < 18
+  }, [dossier.usager_date_naissance])
 
   useEffect(() => {
     setConservation(dossier.consent_conservation || false)
@@ -33,6 +48,13 @@ export default function TabConsentement({ dossier, onSave, saving }: Props) {
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-gray-900 dark:text-white">2. Consentement RGPD</h3>
+
+      {isMinor && (
+        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <span>Usager mineur — Des dispositions spécifiques s'appliquent pour le recueil du consentement (autorisation du représentant légal requise).</span>
+        </div>
+      )}
 
       <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg text-sm text-blue-800 dark:text-blue-300">
         <ShieldCheck className="w-5 h-5 inline mr-2" />
