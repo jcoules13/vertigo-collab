@@ -71,3 +71,11 @@
 .animate-recording {
   animation: recording-pulse 1.5s ease-in-out infinite;
 }
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
