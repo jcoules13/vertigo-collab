@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Check } from 'lucide-react'
 import { DossierSuivi } from '../../types/database'
 
 interface Props {
@@ -24,6 +24,7 @@ const COLOR_MAP: Record<string, string> = {
 
 export default function TabEvaluation({ dossier, onSave, saving }: Props) {
   const [values, setValues] = useState<Record<string, number | null>>({})
+  const [justSaved, setJustSaved] = useState(false)
 
   useEffect(() => {
     const v: Record<string, number | null> = {}
@@ -35,8 +36,10 @@ export default function TabEvaluation({ dossier, onSave, saving }: Props) {
 
   const isDirty = EVAL_FIELDS.some(f => (values[f.key] ?? null) !== (dossier[f.key] ?? null))
 
-  const handleSave = () => {
-    onSave(values as any)
+  const handleSave = async () => {
+    await onSave(values as any)
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 3000)
   }
 
   return (
@@ -74,11 +77,19 @@ export default function TabEvaluation({ dossier, onSave, saving }: Props) {
         })}
       </div>
 
-      {isDirty && (
+      {(isDirty || justSaved) && (
         <div className="flex justify-end pt-2">
-          <button onClick={handleSave} disabled={saving} className="btn-primary">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Mettre à jour
+          <button
+            onClick={handleSave}
+            disabled={saving || justSaved}
+            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-all ${
+              justSaved ? 'bg-green-600' : 'bg-red-500 animate-pulse-soft'
+            }`}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+             : justSaved ? <Check className="w-4 h-4 mr-2" />
+             : <Save className="w-4 h-4 mr-2" />}
+            {justSaved ? 'Mis à jour !' : 'Mettre à jour'}
           </button>
         </div>
       )}

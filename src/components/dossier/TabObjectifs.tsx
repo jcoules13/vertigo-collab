@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2, Target, Plus, X } from 'lucide-react'
+import { Save, Loader2, Check, Target, Plus, X } from 'lucide-react'
 import { DossierSuivi } from '../../types/database'
 
 interface Props {
@@ -16,6 +16,7 @@ const PLACEHOLDERS = [
 
 export default function TabObjectifs({ dossier, onSave, saving }: Props) {
   const [objectifs, setObjectifs] = useState<string[]>([''])
+  const [justSaved, setJustSaved] = useState(false)
 
   useEffect(() => {
     const list = dossier.objectifs && dossier.objectifs.length > 0 ? [...dossier.objectifs] : ['']
@@ -26,8 +27,10 @@ export default function TabObjectifs({ dossier, onSave, saving }: Props) {
     JSON.stringify(objectifs.map(o => o.trim()).filter(Boolean)) !==
     JSON.stringify((dossier.objectifs || []).filter(Boolean))
 
-  const handleSave = () => {
-    onSave({ objectifs: objectifs.map(o => o.trim()).filter(Boolean) })
+  const handleSave = async () => {
+    await onSave({ objectifs: objectifs.map(o => o.trim()).filter(Boolean) })
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 3000)
   }
 
   const updateObjectif = (index: number, value: string) => {
@@ -87,11 +90,19 @@ export default function TabObjectifs({ dossier, onSave, saving }: Props) {
         Ajouter un objectif
       </button>
 
-      {isDirty && (
+      {(isDirty || justSaved) && (
         <div className="flex justify-end pt-2">
-          <button onClick={handleSave} disabled={saving} className="btn-primary">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Mettre à jour
+          <button
+            onClick={handleSave}
+            disabled={saving || justSaved}
+            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-all ${
+              justSaved ? 'bg-green-600' : 'bg-red-500 animate-pulse-soft'
+            }`}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+             : justSaved ? <Check className="w-4 h-4 mr-2" />
+             : <Save className="w-4 h-4 mr-2" />}
+            {justSaved ? 'Mis à jour !' : 'Mettre à jour'}
           </button>
         </div>
       )}

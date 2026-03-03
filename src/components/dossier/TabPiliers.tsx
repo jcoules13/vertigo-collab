@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Check } from 'lucide-react'
 import { DossierSuivi, Piliers, Pilier, PILIER_LABELS, PILIER_NIVEAUX, PILIER_DESCRIPTIONS, DEFAULT_PILIERS } from '../../types/database'
 
 interface Props {
@@ -85,6 +85,7 @@ function PilierSection({ pilierKey, pilier, labels, descriptions, onChange }: {
 
 export default function TabPiliers({ dossier, onSave, saving }: Props) {
   const [piliers, setPiliers] = useState<Piliers>(DEFAULT_PILIERS)
+  const [justSaved, setJustSaved] = useState(false)
 
   useEffect(() => {
     const p = dossier.piliers
@@ -119,8 +120,10 @@ export default function TabPiliers({ dossier, onSave, saving }: Props) {
 
   const isDirty = JSON.stringify(piliers) !== JSON.stringify(getOriginalPiliers())
 
-  const handleSave = () => {
-    onSave({ piliers })
+  const handleSave = async () => {
+    await onSave({ piliers })
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 3000)
   }
 
   return (
@@ -140,11 +143,19 @@ export default function TabPiliers({ dossier, onSave, saving }: Props) {
         ))}
       </div>
 
-      {isDirty && (
+      {(isDirty || justSaved) && (
         <div className="flex justify-end pt-2">
-          <button onClick={handleSave} disabled={saving} className="btn-primary">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Mettre à jour
+          <button
+            onClick={handleSave}
+            disabled={saving || justSaved}
+            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-all ${
+              justSaved ? 'bg-green-600' : 'bg-red-500 animate-pulse-soft'
+            }`}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+             : justSaved ? <Check className="w-4 h-4 mr-2" />
+             : <Save className="w-4 h-4 mr-2" />}
+            {justSaved ? 'Mis à jour !' : 'Mettre à jour'}
           </button>
         </div>
       )}

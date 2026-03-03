@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Save, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { Save, Loader2, Check, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { DossierSuivi } from '../../types/database'
 
 function computeAge(dateStr: string): number | null {
@@ -21,6 +21,7 @@ interface Props {
 export default function TabConsentement({ dossier, onSave, saving }: Props) {
   const [conservation, setConservation] = useState(false)
   const [contact, setContact] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
 
   const isMinor = useMemo(() => {
     const age = computeAge(dossier.usager_date_naissance || '')
@@ -36,13 +37,15 @@ export default function TabConsentement({ dossier, onSave, saving }: Props) {
     conservation !== (dossier.consent_conservation || false) ||
     contact !== (dossier.consent_contact || false)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const now = new Date().toISOString()
-    onSave({
+    await onSave({
       consent_conservation: conservation,
       consent_contact: contact,
       consent_date: (conservation || contact) ? now : null,
     })
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 3000)
   }
 
   return (
@@ -95,11 +98,19 @@ export default function TabConsentement({ dossier, onSave, saving }: Props) {
         </p>
       )}
 
-      {isDirty && (
+      {(isDirty || justSaved) && (
         <div className="flex justify-end pt-2">
-          <button onClick={handleSave} disabled={saving} className="btn-primary">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Mettre à jour
+          <button
+            onClick={handleSave}
+            disabled={saving || justSaved}
+            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-all ${
+              justSaved ? 'bg-green-600' : 'bg-red-500 animate-pulse-soft'
+            }`}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+             : justSaved ? <Check className="w-4 h-4 mr-2" />
+             : <Save className="w-4 h-4 mr-2" />}
+            {justSaved ? 'Mis à jour !' : 'Mettre à jour'}
           </button>
         </div>
       )}

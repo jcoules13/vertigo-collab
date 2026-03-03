@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Save, Loader2, Copy, AlertTriangle } from 'lucide-react'
+import { Save, Loader2, Check, Copy, AlertTriangle } from 'lucide-react'
 import { DossierSuivi } from '../../types/database'
 
 interface Props {
@@ -39,6 +39,7 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
   const [repTel, setRepTel] = useState('')
   const [repEmail, setRepEmail] = useState('')
   const [repLien, setRepLien] = useState('')
+  const [justSaved, setJustSaved] = useState(false)
 
   useEffect(() => {
     setNom(dossier.usager_nom || '')
@@ -82,8 +83,8 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
     repEmail !== (dossier.representant_legal_email || '') ||
     repLien !== (dossier.representant_legal_lien || '')
 
-  const handleSave = () => {
-    onSave({
+  const handleSave = async () => {
+    await onSave({
       usager_nom: nom.trim(),
       usager_prenom: prenom.trim() || null,
       usager_date_naissance: dateNaissance || null,
@@ -101,6 +102,8 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
       representant_legal_email: repEmail.trim() || null,
       representant_legal_lien: repLien.trim() || null,
     })
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 3000)
   }
 
   const copyContactToPrevenir = () => {
@@ -223,11 +226,19 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
         </div>
       </div>
 
-      {isDirty && (
+      {(isDirty || justSaved) && (
         <div className="flex justify-end pt-2">
-          <button onClick={handleSave} disabled={saving || !nom.trim()} className="btn-primary">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Mettre à jour
+          <button
+            onClick={handleSave}
+            disabled={saving || justSaved || !nom.trim()}
+            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-all ${
+              justSaved ? 'bg-green-600' : 'bg-red-500 animate-pulse-soft'
+            }`}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+             : justSaved ? <Check className="w-4 h-4 mr-2" />
+             : <Save className="w-4 h-4 mr-2" />}
+            {justSaved ? 'Mis à jour !' : 'Mettre à jour'}
           </button>
         </div>
       )}

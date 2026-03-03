@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Check } from 'lucide-react'
 import { DossierSuivi, SITUATION_PERSONNELLE_OPTIONS, SITUATION_FAMILIALE_OPTIONS, SITUATION_FINANCIERE_OPTIONS, SITUATION_PROFESSIONNELLE_OPTIONS, SITUATION_MEDICALE_OPTIONS, SITUATION_SANTE_PARCOURS_OPTIONS } from '../../types/database'
 
 interface Props {
@@ -45,6 +45,7 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
   const [professionnelle, setProfessionnelle] = useState<string[]>([])
   const [medicale, setMedicale] = useState<string[]>([])
   const [santeParcours, setSanteParcours] = useState<string[]>([])
+  const [justSaved, setJustSaved] = useState(false)
 
   useEffect(() => {
     setPersonnelle(dossier.situation_personnelle || [])
@@ -63,8 +64,8 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
     JSON.stringify([...medicale].sort()) !== JSON.stringify([...(dossier.situation_medicale || [])].sort()) ||
     JSON.stringify([...santeParcours].sort()) !== JSON.stringify([...(dossier.situation_sante_parcours || [])].sort())
 
-  const handleSave = () => {
-    onSave({
+  const handleSave = async () => {
+    await onSave({
       situation_personnelle: personnelle,
       situation_familiale: familiale,
       situation_financiere: financiere,
@@ -72,6 +73,8 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
       situation_medicale: medicale,
       situation_sante_parcours: santeParcours,
     })
+    setJustSaved(true)
+    setTimeout(() => setJustSaved(false), 3000)
   }
 
   return (
@@ -87,11 +90,19 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
         <CheckboxGroup label="Santé / parcours" options={SITUATION_SANTE_PARCOURS_OPTIONS} selected={santeParcours} onChange={setSanteParcours} />
       </div>
 
-      {isDirty && (
+      {(isDirty || justSaved) && (
         <div className="flex justify-end pt-2">
-          <button onClick={handleSave} disabled={saving} className="btn-primary">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Mettre à jour
+          <button
+            onClick={handleSave}
+            disabled={saving || justSaved}
+            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-all ${
+              justSaved ? 'bg-green-600' : 'bg-red-500 animate-pulse-soft'
+            }`}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+             : justSaved ? <Check className="w-4 h-4 mr-2" />
+             : <Save className="w-4 h-4 mr-2" />}
+            {justSaved ? 'Mis à jour !' : 'Mettre à jour'}
           </button>
         </div>
       )}
