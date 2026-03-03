@@ -176,6 +176,9 @@ export interface DossierSuivi {
   droits_mdph_en_cours: boolean
   droits_aah: boolean
   droits_complementaire_sante: boolean
+  droits_medecine_travail: boolean
+  droits_accident_travail: boolean
+  droits_invalidite: boolean
   droits_commentaires: string | null
   // Section 5: Objectifs SMART
   objectifs: string[]

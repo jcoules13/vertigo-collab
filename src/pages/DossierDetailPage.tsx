@@ -56,7 +56,8 @@ function getCompletionIndicator(dossier: DossierSuivi, tabId: TabId): 'empty' | 
     }
     case 'droits': {
       const any = dossier.droits_medecin_traitant || dossier.droits_ald || dossier.droits_rqth ||
-        dossier.droits_mdph_en_cours || dossier.droits_aah || dossier.droits_complementaire_sante
+        dossier.droits_mdph_en_cours || dossier.droits_aah || dossier.droits_complementaire_sante ||
+        dossier.droits_medecine_travail || dossier.droits_accident_travail || dossier.droits_invalidite
       return any ? 'done' : 'empty'
     }
     case 'objectifs': {

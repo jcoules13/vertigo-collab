@@ -15,6 +15,9 @@ const DROITS_FIELDS = [
   { key: 'droits_mdph_en_cours' as const, label: 'Dossier MDPH en cours' },
   { key: 'droits_aah' as const, label: 'AAH (Allocation Adulte Handicapé)' },
   { key: 'droits_complementaire_sante' as const, label: 'Complémentaire santé' },
+  { key: 'droits_medecine_travail' as const, label: 'Médecine du travail' },
+  { key: 'droits_accident_travail' as const, label: 'Accident du travail reconnu' },
+  { key: 'droits_invalidite' as const, label: 'Invalidité' },
 ]
 
 export default function TabDroits({ dossier, onSave, saving }: Props) {
