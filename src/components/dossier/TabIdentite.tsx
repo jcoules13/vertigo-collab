@@ -39,6 +39,7 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
   const [repTel, setRepTel] = useState('')
   const [repEmail, setRepEmail] = useState('')
   const [repLien, setRepLien] = useState('')
+  const [codePostal, setCodePostal] = useState('')
   const [justSaved, setJustSaved] = useState(false)
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
     setRepTel(dossier.representant_legal_telephone || '')
     setRepEmail(dossier.representant_legal_email || '')
     setRepLien(dossier.representant_legal_lien || '')
+    setCodePostal(dossier.code_postal || '')
   }, [dossier])
 
   const isMinor = useMemo(() => {
@@ -81,7 +83,8 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
     repPrenom !== (dossier.representant_legal_prenom || '') ||
     repTel !== (dossier.representant_legal_telephone || '') ||
     repEmail !== (dossier.representant_legal_email || '') ||
-    repLien !== (dossier.representant_legal_lien || '')
+    repLien !== (dossier.representant_legal_lien || '') ||
+    codePostal !== (dossier.code_postal || '')
 
   const handleSave = async () => {
     await onSave({
@@ -101,6 +104,7 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
       representant_legal_telephone: repTel.trim() || null,
       representant_legal_email: repEmail.trim() || null,
       representant_legal_lien: repLien.trim() || null,
+      code_postal: codePostal.trim() || null,
     })
     setJustSaved(true)
     setTimeout(() => setJustSaved(false), 3000)
@@ -138,9 +142,15 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Adresse</label>
-        <textarea value={adresse} onChange={e => setAdresse(e.target.value)} className="input" rows={2} placeholder="Adresse complète" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Adresse</label>
+          <textarea value={adresse} onChange={e => setAdresse(e.target.value)} className="input" rows={2} placeholder="Adresse complète" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Code postal</label>
+          <input value={codePostal} onChange={e => setCodePostal(e.target.value)} className="input" placeholder="75001" maxLength={5} />
+        </div>
       </div>
 
       {/* Numéros administratifs */}

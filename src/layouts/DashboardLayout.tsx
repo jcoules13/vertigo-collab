@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Clock, Calendar, CalendarPlus, FolderOpen, User, Users,
-  LogOut, Menu
+  BarChart3, LogOut, Menu
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import ThemeToggle from '../components/ThemeToggle'
@@ -18,6 +18,7 @@ const navigation = [
 
 const adminNavigation = [
   { name: 'Collaborateurs', href: '/collaborateurs', icon: Users },
+  { name: 'Statistiques', href: '/statistiques', icon: BarChart3 },
 ]
 
 export default function DashboardLayout() {

@@ -158,6 +158,7 @@ export interface DossierSuivi {
   representant_legal_telephone: string | null
   representant_legal_email: string | null
   representant_legal_lien: string | null
+  code_postal: string | null
   // Section 2: Consentement RGPD
   consent_conservation: boolean
   consent_contact: boolean

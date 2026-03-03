@@ -15,6 +15,7 @@ import ReservationsPage from './pages/ReservationsPage'
 import DossiersPage from './pages/DossiersPage'
 import DossierDetailPage from './pages/DossierDetailPage'
 import ProfilPage from './pages/ProfilPage'
+import StatistiquesPage from './pages/StatistiquesPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, collaborateur, loading, refreshCollaborateur } = useAuth()
@@ -97,6 +98,7 @@ export default function App() {
               <Route path="dossiers" element={<DossiersPage />} />
               <Route path="dossiers/:id" element={<DossierDetailPage />} />
               <Route path="collaborateurs" element={<AdminRoute><CollaborateursPage /></AdminRoute>} />
+              <Route path="statistiques" element={<AdminRoute><StatistiquesPage /></AdminRoute>} />
               <Route path="profil" element={<ProfilPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

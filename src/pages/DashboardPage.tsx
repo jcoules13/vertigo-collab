@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle, FolderOpen, BarChart3, Activity } from 'lucide-react'
+import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle, FolderOpen, BarChart3, MapPin } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PermanenceOccurrence, RendezVous, ReservationExterne, DossierSuivi, STATUT_RESERVATION_LABELS, CANAL_LABELS, STATUT_DOSSIER_LABELS } from '../types/database'
@@ -20,13 +20,10 @@ export default function DashboardPage() {
 
   // Admin stats
   const [adminStats, setAdminStats] = useState<{
-    dossiersMonth: number
-    dossiersWeek: number
-    avgSeances: number
-    avgDouleur: number | null
-    avgEnergie: number | null
-    avgStress: number | null
-    avgSoutien: number | null
+    dossiersEnCours: number
+    dossiersOuvertsMois: number
+    ppvEnCours: number
+    departements: { dept: string; count: number }[]
   } | null>(null)
 
   useEffect(() => {
@@ -102,32 +99,40 @@ export default function DashboardPage() {
           try {
             const now = new Date()
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-            const startOfWeek = new Date(now.getTime() - now.getDay() * 86400000).toISOString()
 
-            const [monthRes, weekRes, allDossiersRes] = await Promise.all([
-              supabase.from('dossiers_suivi').select('id', { count: 'exact', head: true }).gte('created_at', startOfMonth),
-              supabase.from('dossiers_suivi').select('id', { count: 'exact', head: true }).gte('updated_at', startOfWeek).in('statut', ['en_cours', 'clos']),
-              supabase.from('dossiers_suivi').select('id, eval_douleur, eval_energie, eval_stress, eval_soutien, seances(id)'),
-            ])
+            const allDossiersRes = await supabase
+              .from('dossiers_suivi')
+              .select('id, statut, piliers, objectifs, plan_actions, code_postal, created_at')
 
-            const allDossiers = allDossiersRes.data || []
-            const totalSeances = allDossiers.reduce((sum: number, d: any) => sum + (d.seances?.length || 0), 0)
-            const avgSeances = allDossiers.length > 0 ? Math.round((totalSeances / allDossiers.length) * 10) / 10 : 0
+            const allDossiers = (allDossiersRes.data || []) as any[]
 
-            const avg = (field: string) => {
-              const vals = allDossiers.filter((d: any) => d[field] !== null).map((d: any) => d[field])
-              return vals.length > 0 ? Math.round((vals.reduce((a: number, b: number) => a + b, 0) / vals.length) * 10) / 10 : null
+            const dossiersEnCours = allDossiers.filter(d => d.statut === 'en_cours').length
+            const dossiersOuvertsMois = allDossiers.filter(d => d.created_at >= startOfMonth).length
+
+            const hasPpvContent = (d: any): boolean => {
+              if (d.objectifs && Array.isArray(d.objectifs) && d.objectifs.some((o: string) => o?.trim())) return true
+              if (d.plan_actions && Array.isArray(d.plan_actions) && d.plan_actions.some((a: any) => a?.action?.trim() || a?.responsable?.trim())) return true
+              if (d.piliers && typeof d.piliers === 'object') {
+                return Object.values(d.piliers).some((p: any) => p?.besoin?.trim() || p?.niveau !== null || p?.actions?.trim())
+              }
+              return false
             }
+            const ppvEnCours = allDossiers.filter(d => d.statut !== 'clos' && hasPpvContent(d)).length
 
-            setAdminStats({
-              dossiersMonth: monthRes.count || 0,
-              dossiersWeek: weekRes.count || 0,
-              avgSeances,
-              avgDouleur: avg('eval_douleur'),
-              avgEnergie: avg('eval_energie'),
-              avgStress: avg('eval_stress'),
-              avgSoutien: avg('eval_soutien'),
+            const deptMap = new Map<string, number>()
+            allDossiers.forEach(d => {
+              if (d.code_postal && typeof d.code_postal === 'string' && d.code_postal.length >= 2) {
+                const dept = d.code_postal.startsWith('97') && d.code_postal.length >= 3
+                  ? d.code_postal.slice(0, 3)
+                  : d.code_postal.slice(0, 2)
+                deptMap.set(dept, (deptMap.get(dept) || 0) + 1)
+              }
             })
+            const departements = Array.from(deptMap.entries())
+              .map(([dept, count]) => ({ dept, count }))
+              .sort((a, b) => b.count - a.count)
+
+            setAdminStats({ dossiersEnCours, dossiersOuvertsMois, ppvEnCours, departements })
           } catch (err) {
             console.error('Admin stats error:', err)
           }
@@ -313,58 +318,41 @@ export default function DashboardPage() {
       {/* Admin stats */}
       {isAdmin && adminStats && (
         <div className="card">
-          <div className="card-header">
+          <div className="card-header flex items-center justify-between">
             <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary-600" /> Statistiques anonymes
+              <BarChart3 className="w-5 h-5 text-primary-600" /> Statistiques d'activité
             </h2>
+            <Link to="/statistiques" className="text-sm text-primary-600 hover:underline">Statistiques avancées</Link>
           </div>
-          <div className="card-body">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{adminStats.dossiersMonth}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Dossiers ce mois</p>
+          <div className="card-body space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg">
+                <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{adminStats.dossiersEnCours}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Dossiers en cours</p>
               </div>
-              <div className="text-center p-3 bg-green-50 dark:bg-green-900/10 rounded-lg">
-                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{adminStats.dossiersWeek}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Traités cette semaine</p>
+              <div className="text-center p-4 bg-green-50 dark:bg-green-900/10 rounded-lg">
+                <p className="text-3xl font-bold text-green-700 dark:text-green-400">{adminStats.dossiersOuvertsMois}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Ouverts ce mois</p>
               </div>
-              <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/10 rounded-lg">
-                <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">{adminStats.avgSeances}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Séances / dossier</p>
-              </div>
-              <div className="text-center p-3 bg-teal-50 dark:bg-teal-900/10 rounded-lg">
-                <div className="flex items-center justify-center gap-1">
-                  <Activity className="w-4 h-4 text-teal-600" />
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Auto-évaluation</p>
+              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/10 rounded-lg">
+                <p className="text-3xl font-bold text-purple-700 dark:text-purple-400">{adminStats.ppvEnCours}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PPV en cours</p>
               </div>
             </div>
-            {(adminStats.avgDouleur !== null || adminStats.avgEnergie !== null) && (
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                {adminStats.avgDouleur !== null && (
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded">
-                    <span className="text-gray-600 dark:text-gray-400">Douleur</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">{adminStats.avgDouleur}/10</span>
-                  </div>
-                )}
-                {adminStats.avgEnergie !== null && (
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded">
-                    <span className="text-gray-600 dark:text-gray-400">Énergie</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">{adminStats.avgEnergie}/10</span>
-                  </div>
-                )}
-                {adminStats.avgStress !== null && (
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded">
-                    <span className="text-gray-600 dark:text-gray-400">Stress</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">{adminStats.avgStress}/10</span>
-                  </div>
-                )}
-                {adminStats.avgSoutien !== null && (
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded">
-                    <span className="text-gray-600 dark:text-gray-400">Soutien</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">{adminStats.avgSoutien}/10</span>
-                  </div>
-                )}
+
+            {adminStats.departements.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                  <MapPin className="w-4 h-4" /> Répartition par département
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {adminStats.departements.map(d => (
+                    <span key={d.dept} className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
+                      <span className="font-medium text-gray-900 dark:text-white">{d.dept}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">({d.count})</span>
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
