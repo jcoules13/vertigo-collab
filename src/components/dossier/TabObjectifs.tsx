@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Loader2, Target } from 'lucide-react'
+import { Save, Loader2, Target, Plus, X } from 'lucide-react'
 import { DossierSuivi } from '../../types/database'
 
 interface Props {
@@ -8,28 +8,38 @@ interface Props {
   saving: boolean
 }
 
+const PLACEHOLDERS = [
+  'Ex : Obtenir une reconnaissance RQTH d\'ici 3 mois...',
+  'Ex : Participer à 2 ateliers collectifs par mois...',
+  'Ex : Mettre en place une routine bien-être hebdomadaire...',
+]
+
 export default function TabObjectifs({ dossier, onSave, saving }: Props) {
-  const [obj1, setObj1] = useState('')
-  const [obj2, setObj2] = useState('')
-  const [obj3, setObj3] = useState('')
+  const [objectifs, setObjectifs] = useState<string[]>([''])
 
   useEffect(() => {
-    setObj1(dossier.objectif_1 || '')
-    setObj2(dossier.objectif_2 || '')
-    setObj3(dossier.objectif_3 || '')
+    const list = dossier.objectifs && dossier.objectifs.length > 0 ? [...dossier.objectifs] : ['']
+    setObjectifs(list)
   }, [dossier])
 
   const isDirty =
-    obj1 !== (dossier.objectif_1 || '') ||
-    obj2 !== (dossier.objectif_2 || '') ||
-    obj3 !== (dossier.objectif_3 || '')
+    JSON.stringify(objectifs.map(o => o.trim()).filter(Boolean)) !==
+    JSON.stringify((dossier.objectifs || []).filter(Boolean))
 
   const handleSave = () => {
-    onSave({
-      objectif_1: obj1.trim() || null,
-      objectif_2: obj2.trim() || null,
-      objectif_3: obj3.trim() || null,
-    })
+    onSave({ objectifs: objectifs.map(o => o.trim()).filter(Boolean) })
+  }
+
+  const updateObjectif = (index: number, value: string) => {
+    setObjectifs(prev => prev.map((o, i) => i === index ? value : o))
+  }
+
+  const addObjectif = () => {
+    setObjectifs(prev => [...prev, ''])
+  }
+
+  const removeObjectif = (index: number) => {
+    setObjectifs(prev => prev.filter((_, i) => i !== index))
   }
 
   return (
@@ -42,37 +52,40 @@ export default function TabObjectifs({ dossier, onSave, saving }: Props) {
       </div>
 
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Objectif 1</label>
-          <textarea
-            value={obj1}
-            onChange={e => setObj1(e.target.value)}
-            className="input"
-            rows={3}
-            placeholder="Ex : Obtenir une reconnaissance RQTH d'ici 3 mois..."
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Objectif 2</label>
-          <textarea
-            value={obj2}
-            onChange={e => setObj2(e.target.value)}
-            className="input"
-            rows={3}
-            placeholder="Ex : Participer à 2 ateliers collectifs par mois..."
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Objectif 3</label>
-          <textarea
-            value={obj3}
-            onChange={e => setObj3(e.target.value)}
-            className="input"
-            rows={3}
-            placeholder="Ex : Mettre en place une routine bien-être hebdomadaire..."
-          />
-        </div>
+        {objectifs.map((obj, i) => (
+          <div key={i}>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Objectif {i + 1}</label>
+              {objectifs.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeObjectif(i)}
+                  className="p-1 text-gray-400 hover:text-red-500 rounded"
+                  title="Supprimer cet objectif"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <textarea
+              value={obj}
+              onChange={e => updateObjectif(i, e.target.value)}
+              className="input"
+              rows={3}
+              placeholder={PLACEHOLDERS[i] || 'Décrivez un objectif SMART...'}
+            />
+          </div>
+        ))}
       </div>
+
+      <button
+        type="button"
+        onClick={addObjectif}
+        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+      >
+        <Plus className="w-4 h-4" />
+        Ajouter un objectif
+      </button>
 
       {isDirty && (
         <div className="flex justify-end pt-2">

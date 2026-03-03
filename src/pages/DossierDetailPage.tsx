@@ -60,7 +60,7 @@ function getCompletionIndicator(dossier: DossierSuivi, tabId: TabId): 'empty' | 
       return any ? 'done' : 'empty'
     }
     case 'objectifs': {
-      const filled = [dossier.objectif_1, dossier.objectif_2, dossier.objectif_3].filter(Boolean).length
+      const filled = (dossier.objectifs || []).filter(Boolean).length
       return filled === 0 ? 'empty' : filled >= 2 ? 'done' : 'partial'
     }
     case 'piliers': {

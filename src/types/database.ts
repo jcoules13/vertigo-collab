@@ -178,9 +178,7 @@ export interface DossierSuivi {
   droits_complementaire_sante: boolean
   droits_commentaires: string | null
   // Section 5: Objectifs SMART
-  objectif_1: string | null
-  objectif_2: string | null
-  objectif_3: string | null
+  objectifs: string[]
   // Section 6: Piliers
   piliers: Piliers
   // Section 7: Plan d'actions

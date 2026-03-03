@@ -196,7 +196,7 @@ export default function DossiersPage() {
                         </span>
                         {(() => {
                           const p = dossier.piliers
-                          const hasObj = Boolean(dossier.objectif_1 || dossier.objectif_2 || dossier.objectif_3)
+                          const hasObj = Boolean(dossier.objectifs && dossier.objectifs.filter(Boolean).length > 0)
                           const hasPiliers = p && typeof p === 'object' && ['communication', 'administratif', 'social', 'bien_etre'].some(k => (p as any)[k]?.niveau !== null)
                           const hasEval = dossier.eval_douleur !== null || dossier.eval_energie !== null
                           const ppvStarted = hasObj || hasPiliers || hasEval
