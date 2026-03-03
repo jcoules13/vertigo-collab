@@ -167,6 +167,8 @@ export interface DossierSuivi {
   situation_familiale: string[]
   situation_financiere: string[]
   situation_professionnelle: string[]
+  situation_medicale: string[]
+  situation_sante_parcours: string[]
   // Section 4: Droits et couverture
   droits_medecin_traitant: boolean
   droits_ald: boolean
@@ -292,7 +294,17 @@ export const SITUATION_FINANCIERE_OPTIONS = [
 ] as const
 
 export const SITUATION_PROFESSIONNELLE_OPTIONS = [
-  'En emploi', 'En recherche', 'En formation', 'Arrêt maladie'
+  'En emploi', 'En recherche', 'En formation', 'Arrêt maladie',
+  'Étudiant', 'Retraite', 'Indépendant', 'Artisan', 'Accident de travail'
+] as const
+
+export const SITUATION_MEDICALE_OPTIONS = [
+  'Compliquée', 'Polyhandicap', 'Détériorée', 'Fragile'
+] as const
+
+export const SITUATION_SANTE_PARCOURS_OPTIONS = [
+  'Personne en situation de handicap', 'Malade chronique', 'Pathologie',
+  'Longue convalescence', 'Errance thérapeutique'
 ] as const
 
 // PPV — Labels niveaux par pilier (fidele au document PPV)

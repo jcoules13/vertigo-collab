@@ -50,9 +50,9 @@ function getCompletionIndicator(dossier: DossierSuivi, tabId: TabId): 'empty' | 
     case 'consentement':
       return (dossier.consent_conservation || dossier.consent_contact) ? 'done' : 'empty'
     case 'situation': {
-      const has = [dossier.situation_personnelle, dossier.situation_familiale, dossier.situation_financiere, dossier.situation_professionnelle]
+      const has = [dossier.situation_personnelle, dossier.situation_familiale, dossier.situation_financiere, dossier.situation_professionnelle, dossier.situation_medicale, dossier.situation_sante_parcours]
         .filter(a => a && a.length > 0).length
-      return has === 0 ? 'empty' : has === 4 ? 'done' : 'partial'
+      return has === 0 ? 'empty' : has === 6 ? 'done' : 'partial'
     }
     case 'droits': {
       const any = dossier.droits_medecin_traitant || dossier.droits_ald || dossier.droits_rqth ||
