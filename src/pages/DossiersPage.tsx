@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { FolderOpen, Plus, Loader2, User, FileText, Phone, Mail, ClipboardCheck } from 'lucide-react'
+import { FolderOpen, Plus, Loader2, User, FileText, Phone, Mail, ClipboardCheck, Search } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { DossierSuivi, STATUT_DOSSIER_LABELS } from '../types/database'
@@ -20,6 +20,7 @@ export default function DossiersPage() {
   const [dossiers, setDossiers] = useState<(DossierSuivi & { seances_count: number })[]>([])
   const [statutFilter, setStatutFilter] = useState<DossierSuivi['statut'] | 'tous'>('tous')
   const [mesDossiers, setMesDossiers] = useState(false)
+  const [searchText, setSearchText] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -89,6 +90,13 @@ export default function DossiersPage() {
       setSaving(false)
     }
   }
+
+  const filteredDossiers = dossiers.filter(d => {
+    if (!searchText.trim()) return true
+    const q = searchText.toLowerCase()
+    const fullName = `${d.usager_prenom || ''} ${d.usager_nom || ''}`.toLowerCase()
+    return fullName.includes(q)
+  })
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-primary-600" /></div>
@@ -168,17 +176,27 @@ export default function DossiersPage() {
         >
           Mes dossiers
         </button>
+        <div className="w-px bg-gray-200 dark:bg-gray-700 mx-1" />
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            placeholder="Rechercher..."
+            className="pl-9 pr-3 py-1.5 rounded-full text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-48"
+          />
+        </div>
       </div>
 
       {/* List */}
-      {dossiers.length === 0 ? (
+      {filteredDossiers.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>Aucun dossier {statutFilter !== 'tous' ? STATUT_DOSSIER_LABELS[statutFilter].toLowerCase() : ''}.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {dossiers.map(dossier => (
+          {filteredDossiers.map(dossier => (
             <Link key={dossier.id} to={`/dossiers/${dossier.id}`} className="card hover:shadow-md transition-shadow block">
               <div className="card-body">
                 <div className="flex items-start justify-between gap-4">
