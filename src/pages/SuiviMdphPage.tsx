@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, Loader2, Search, CalendarClock, FileText, CheckCircle, XCircle, ArrowLeft, Info } from 'lucide-react'
+import { Users, Loader2, Search, CalendarClock, CalendarPlus, FileText, CheckCircle, XCircle, ArrowLeft, Info } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import ThemeToggle from '../components/ThemeToggle'
@@ -295,6 +295,17 @@ export default function SuiviMdphPage() {
                 )}
               </div>
             )}
+
+            {/* Prendre RDV */}
+            <a
+              href="https://vertigocomhandicap.org/prendre-rdv/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-xl transition-colors"
+            >
+              <CalendarPlus className="w-4 h-4" />
+              Prendre un rendez-vous
+            </a>
 
             {/* Reset */}
             <button
