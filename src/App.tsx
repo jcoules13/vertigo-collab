@@ -14,6 +14,8 @@ import CollaborateursPage from './pages/CollaborateursPage'
 import ReservationsPage from './pages/ReservationsPage'
 import DossiersPage from './pages/DossiersPage'
 import DossierDetailPage from './pages/DossierDetailPage'
+import MdphListPage from './pages/MdphListPage'
+import MdphFormPage from './pages/MdphFormPage'
 import ProfilPage from './pages/ProfilPage'
 import StatistiquesPage from './pages/StatistiquesPage'
 
@@ -97,6 +99,8 @@ export default function App() {
               <Route path="reservations" element={<ReservationsPage />} />
               <Route path="dossiers" element={<DossiersPage />} />
               <Route path="dossiers/:id" element={<DossierDetailPage />} />
+              <Route path="mdph" element={<MdphListPage />} />
+              <Route path="mdph/:id" element={<MdphFormPage />} />
               <Route path="collaborateurs" element={<AdminRoute><CollaborateursPage /></AdminRoute>} />
               <Route path="statistiques" element={<AdminRoute><StatistiquesPage /></AdminRoute>} />
               <Route path="profil" element={<ProfilPage />} />

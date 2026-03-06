@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle, FolderOpen, BarChart3, MapPin } from 'lucide-react'
+import { Clock, Calendar, CalendarPlus, AlertCircle, Loader2, CheckCircle, XCircle, FolderOpen, FileCheck, BarChart3, MapPin } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PermanenceOccurrence, RendezVous, ReservationExterne, DossierSuivi, STATUT_RESERVATION_LABELS, CANAL_LABELS, STATUT_DOSSIER_LABELS } from '../types/database'
@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [pendingCount, setPendingCount] = useState(0)
   const [myDossiersCount, setMyDossiersCount] = useState(0)
   const [myDossiers, setMyDossiers] = useState<DossierSuivi[]>([])
+  const [myMdphCount, setMyMdphCount] = useState(0)
 
   // Admin stats
   const [adminStats, setAdminStats] = useState<{
@@ -34,7 +35,7 @@ export default function DashboardPage() {
         const today = format(new Date(), 'yyyy-MM-dd')
         const nextWeek = format(addDays(new Date(), 7), 'yyyy-MM-dd')
 
-        const [permRes, rdvRes, pendingPermRes, pendingRdvRes, resExtRes, dossierCountRes, dossierRecentRes] = await Promise.all([
+        const [permRes, rdvRes, pendingPermRes, pendingRdvRes, resExtRes, dossierCountRes, dossierRecentRes, mdphCountRes] = await Promise.all([
           supabase
             .from('permanence_occurrences')
             .select('*, permanences(nom, lieu), permanence_assignments!inner(statut, collaborateur_id, collaborateurs(prenom, nom))')
@@ -79,6 +80,11 @@ export default function DashboardPage() {
             .neq('statut', 'clos')
             .order('updated_at', { ascending: false })
             .limit(5),
+          supabase
+            .from('mdph_formulaires')
+            .select('id', { count: 'exact', head: true })
+            .eq('cree_par', collaborateur.id)
+            .neq('statut', 'envoye'),
         ])
 
         if (permRes.error) throw permRes.error
@@ -93,6 +99,7 @@ export default function DashboardPage() {
         setPendingCount((pendingPermRes.count || 0) + (pendingRdvRes.count || 0))
         setMyDossiersCount(dossierCountRes.count || 0)
         setMyDossiers(dossierRecentRes.data || [])
+        setMyMdphCount(mdphCountRes.count || 0)
 
         // Admin stats
         if (collaborateur.role_asso === 'admin') {
@@ -162,6 +169,7 @@ export default function DashboardPage() {
     { label: 'Réservations (7j)', value: reservations.length, icon: CalendarPlus, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/20', href: '/reservations' },
     { label: 'En attente', value: pendingCount, icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-900/20', href: '/permanences' },
     { label: 'Mes dossiers', value: myDossiersCount, icon: FolderOpen, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-900/20', href: '/dossiers' },
+    { label: 'MDPH en cours', value: myMdphCount, icon: FileCheck, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', href: '/mdph' },
   ]
 
   return (
@@ -180,7 +188,7 @@ export default function DashboardPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {stats.map(stat => (
           <Link key={stat.label} to={stat.href} className="card hover:shadow-md transition-shadow">
             <div className="card-body flex items-center gap-4">

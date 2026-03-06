@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowLeft, Loader2, User,
+  ArrowLeft, Loader2, User, FileCheck,
   UserCircle, ShieldCheck, ClipboardList, Scale, Target,
   Layers, ListChecks, Activity, FileText, CalendarClock, BookOpen
 } from 'lucide-react'
@@ -250,6 +250,13 @@ export default function DossierDetailPage() {
         {dossier.statut === 'clos' && (
           <button onClick={() => handleChangeStatut('ouvert')} className="btn-secondary text-sm">Réouvrir</button>
         )}
+        <button
+          onClick={() => navigate(`/mdph?from_dossier=${dossier.id}`)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors"
+        >
+          <FileCheck className="w-4 h-4" />
+          Formulaire MDPH
+        </button>
       </div>
 
       {/* Tab bar */}
