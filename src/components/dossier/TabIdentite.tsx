@@ -10,6 +10,13 @@ interface Props {
 
 const LIEN_OPTIONS = ['Père', 'Mère', 'Tuteur légal', 'Autre'] as const
 
+function formatSecu(value: string): string {
+  const digits = value.replace(/\s/g, '')
+  if (!digits) return ''
+  const parts = [digits.slice(0,1), digits.slice(1,3), digits.slice(3,5), digits.slice(5,7), digits.slice(7,10), digits.slice(10,13), digits.slice(13,15)].filter(Boolean)
+  return parts.join(' ')
+}
+
 function computeAge(dateStr: string): number | null {
   if (!dateStr) return null
   const birth = new Date(dateStr)
@@ -51,7 +58,7 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
     setAdresse(dossier.usager_adresse || '')
     setPrevNom(dossier.personne_prevenir_nom || '')
     setPrevTel(dossier.personne_prevenir_telephone || '')
-    setNumSecu(dossier.numero_securite_sociale || '')
+    setNumSecu(formatSecu(dossier.numero_securite_sociale || ''))
     setNumCaf(dossier.numero_caf || '')
     setAncienMdph(dossier.ancien_numero_mdph || '')
     setRepNom(dossier.representant_legal_nom || '')
@@ -76,7 +83,7 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
     adresse !== (dossier.usager_adresse || '') ||
     prevNom !== (dossier.personne_prevenir_nom || '') ||
     prevTel !== (dossier.personne_prevenir_telephone || '') ||
-    numSecu !== (dossier.numero_securite_sociale || '') ||
+    numSecu !== formatSecu(dossier.numero_securite_sociale || '') ||
     numCaf !== (dossier.numero_caf || '') ||
     ancienMdph !== (dossier.ancien_numero_mdph || '') ||
     repNom !== (dossier.representant_legal_nom || '') ||
@@ -96,7 +103,7 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
       usager_adresse: adresse.trim() || null,
       personne_prevenir_nom: prevNom.trim() || null,
       personne_prevenir_telephone: prevTel.trim() || null,
-      numero_securite_sociale: numSecu.trim() || null,
+      numero_securite_sociale: numSecu.replace(/\s/g, '').trim() || null,
       numero_caf: numCaf.trim() || null,
       ancien_numero_mdph: ancienMdph.trim() || null,
       representant_legal_nom: repNom.trim() || null,
@@ -159,7 +166,18 @@ export default function TabIdentite({ dossier, onSave, saving }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">N° Sécurité sociale</label>
-            <input value={numSecu} onChange={e => setNumSecu(e.target.value)} className="input" placeholder="1 XX XX XX XXX XXX XX" />
+            <input
+              value={numSecu}
+              onChange={e => {
+                const digits = e.target.value.replace(/[^\d]/g, '').slice(0, 15)
+                const parts = [digits.slice(0,1), digits.slice(1,3), digits.slice(3,5), digits.slice(5,7), digits.slice(7,10), digits.slice(10,13), digits.slice(13,15)].filter(Boolean)
+                setNumSecu(parts.join(' '))
+              }}
+              inputMode="numeric"
+              className="input font-mono tracking-wider"
+              placeholder="1 85 01 75 016 012 45"
+              maxLength={22}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">N° CAF</label>
