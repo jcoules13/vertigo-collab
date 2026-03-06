@@ -45,6 +45,7 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
   const [professionnelle, setProfessionnelle] = useState<string[]>([])
   const [medicale, setMedicale] = useState<string[]>([])
   const [santeParcours, setSanteParcours] = useState<string[]>([])
+  const [aidant, setAidant] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
     setProfessionnelle(dossier.situation_professionnelle || [])
     setMedicale(dossier.situation_medicale || [])
     setSanteParcours(dossier.situation_sante_parcours || [])
+    setAidant(dossier.aidant ?? false)
   }, [dossier])
 
   const isDirty =
@@ -62,7 +64,8 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
     JSON.stringify([...financiere].sort()) !== JSON.stringify([...(dossier.situation_financiere || [])].sort()) ||
     JSON.stringify([...professionnelle].sort()) !== JSON.stringify([...(dossier.situation_professionnelle || [])].sort()) ||
     JSON.stringify([...medicale].sort()) !== JSON.stringify([...(dossier.situation_medicale || [])].sort()) ||
-    JSON.stringify([...santeParcours].sort()) !== JSON.stringify([...(dossier.situation_sante_parcours || [])].sort())
+    JSON.stringify([...santeParcours].sort()) !== JSON.stringify([...(dossier.situation_sante_parcours || [])].sort()) ||
+    aidant !== (dossier.aidant ?? false)
 
   const handleSave = async () => {
     await onSave({
@@ -72,6 +75,7 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
       situation_professionnelle: professionnelle,
       situation_medicale: medicale,
       situation_sante_parcours: santeParcours,
+      aidant,
     })
     setJustSaved(true)
     setTimeout(() => setJustSaved(false), 3000)
@@ -80,6 +84,16 @@ export default function TabSituation({ dossier, onSave, saving }: Props) {
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-gray-900 dark:text-white">3. Situation actuelle</h3>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={aidant}
+          onChange={e => setAidant(e.target.checked)}
+          className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+        />
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Aidant</span>
+      </label>
 
       <div className="space-y-5">
         <CheckboxGroup label="Situation personnelle" options={SITUATION_PERSONNELLE_OPTIONS} selected={personnelle} onChange={setPersonnelle} />

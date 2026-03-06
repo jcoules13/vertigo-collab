@@ -170,6 +170,7 @@ export interface DossierSuivi {
   situation_professionnelle: string[]
   situation_medicale: string[]
   situation_sante_parcours: string[]
+  aidant: boolean
   // Section 4: Droits et couverture
   droits_medecin_traitant: boolean
   droits_ald: boolean
