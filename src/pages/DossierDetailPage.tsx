@@ -296,7 +296,7 @@ export default function DossierDetailPage() {
           {activeTab === 'plan' && <TabPlanActions dossier={dossier} onSave={handleTabSave} saving={saving} collaborateurs={collaborateurs} />}
           {activeTab === 'evaluation' && <TabEvaluation dossier={dossier} onSave={handleTabSave} saving={saving} />}
           {activeTab === 'observations' && <TabObservations dossier={dossier} onSave={handleTabSave} saving={saving} collaborateurNom={collabNom} />}
-          {activeTab === 'suivi' && <TabSuivi dossier={dossier} collaborateurNom={collabNom} />}
+          {activeTab === 'suivi' && <TabSuivi dossier={dossier} collaborateurNom={collabNom} onSave={handleTabSave} saving={saving} />}
           {activeTab === 'seances' && collaborateur && <TabSeances dossier={dossier} collaborateurId={collaborateur.id} onDossierUpdated={fetchDossier} />}
         </div>
       </div>

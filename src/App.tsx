@@ -18,6 +18,7 @@ import MdphListPage from './pages/MdphListPage'
 import MdphFormPage from './pages/MdphFormPage'
 import ProfilPage from './pages/ProfilPage'
 import StatistiquesPage from './pages/StatistiquesPage'
+import SuiviMdphPage from './pages/SuiviMdphPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, collaborateur, loading, refreshCollaborateur } = useAuth()
@@ -89,6 +90,7 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/suivi-mdph" element={<SuiviMdphPage />} />
             <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />

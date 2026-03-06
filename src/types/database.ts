@@ -197,6 +197,8 @@ export interface DossierSuivi {
   // Section 11: Signatures
   signature_beneficiaire_date: string | null
   signature_referent_date: string | null
+  // Documents prochain RDV (public status page)
+  documents_prochain_rdv: string | null
   // Metadata
   motif: string | null
   notes: string | null

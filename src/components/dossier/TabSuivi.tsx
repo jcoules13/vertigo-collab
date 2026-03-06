@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, CalendarPlus, Loader2, Mail } from 'lucide-react'
+import { Plus, CalendarPlus, Loader2, Mail, Save, Check, FileText } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { DossierSuivi, DossierReservation, ReservationExterne, CANAL_LABELS, STATUT_RESERVATION_LABELS } from '../../types/database'
 import { format } from 'date-fns'
@@ -8,9 +8,11 @@ import { fr } from 'date-fns/locale'
 interface Props {
   dossier: DossierSuivi
   collaborateurNom: string
+  onSave?: (updates: Partial<DossierSuivi>) => Promise<void>
+  saving?: boolean
 }
 
-export default function TabSuivi({ dossier, collaborateurNom }: Props) {
+export default function TabSuivi({ dossier, collaborateurNom, onSave, saving: savingProp }: Props) {
   const [linkedReservations, setLinkedReservations] = useState<(DossierReservation & { reservations_externes: ReservationExterne })[]>([])
   const [availableReservations, setAvailableReservations] = useState<ReservationExterne[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,6 +28,9 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [emailSent, setEmailSent] = useState(false)
+  const [docsRdv, setDocsRdv] = useState(dossier.documents_prochain_rdv || '')
+  const [docsSaved, setDocsSaved] = useState(false)
+  const docsIsDirty = docsRdv !== (dossier.documents_prochain_rdv || '')
 
   const fetchLinked = async () => {
     try {
@@ -169,6 +174,38 @@ export default function TabSuivi({ dossier, collaborateurNom }: Props) {
           <Mail className="w-4 h-4" /> Email de confirmation envoyé à {dossier.usager_email}
         </div>
       )}
+
+      {/* Documents prochain RDV */}
+      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <div className="flex items-center gap-2 mb-2">
+          <FileText className="w-4 h-4 text-amber-600" />
+          <h4 className="text-sm font-medium text-amber-800 dark:text-amber-300">Documents à apporter au prochain RDV</h4>
+        </div>
+        <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+          Ces informations sont visibles par l'usager sur la page de suivi public.
+        </p>
+        <textarea
+          value={docsRdv}
+          onChange={e => { setDocsRdv(e.target.value); setDocsSaved(false) }}
+          rows={3}
+          placeholder="Ex: Certificat médical récent, justificatif de domicile, dernier avis d'imposition..."
+          className="w-full px-3 py-2 border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+        />
+        {(docsIsDirty || docsSaved) && onSave && (
+          <button
+            onClick={async () => {
+              await onSave({ documents_prochain_rdv: docsRdv.trim() || null } as any)
+              setDocsSaved(true)
+              setTimeout(() => setDocsSaved(false), 2000)
+            }}
+            disabled={savingProp || !docsIsDirty}
+            className={`mt-2 flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-white transition-colors ${docsSaved ? 'bg-green-500' : 'bg-primary-600 hover:bg-primary-700'} disabled:opacity-50`}
+          >
+            {docsSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+            {docsSaved ? 'Enregistré' : 'Enregistrer'}
+          </button>
+        )}
+      </div>
 
       {/* New RDV form */}
       {showNewRdv && (

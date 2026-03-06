@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Clock, Calendar, CalendarPlus, FolderOpen, FileCheck, User, Users,
-  BarChart3, LogOut, Menu
+  BarChart3, LogOut, Menu, ExternalLink
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import ThemeToggle from '../components/ThemeToggle'
@@ -14,8 +14,9 @@ const navigation = [
   { name: 'Réservations', href: '/reservations', icon: CalendarPlus },
   { name: 'Dossiers', href: '/dossiers', icon: FolderOpen },
   { name: 'MDPH', href: '/mdph', icon: FileCheck },
+  { name: 'Suivi usager', href: '/suivi-mdph', icon: ExternalLink, external: true },
   { name: 'Profil', href: '/profil', icon: User },
-]
+] as const
 
 const adminNavigation = [
   { name: 'Collaborateurs', href: '/collaborateurs', icon: Users },
@@ -76,21 +77,34 @@ export default function DashboardLayout() {
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1">
             {allNavItems.map(item => (
-              <NavLink
-                key={item.href}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400'
-                      : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`
-                }
-              >
-                <item.icon className="w-5 h-5" />
-                {item.name}
-              </NavLink>
+              'external' in item && item.external ? (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.name}
+                </a>
+              ) : (
+                <NavLink
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400'
+                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                    }`
+                  }
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.name}
+                </NavLink>
+              )
             ))}
           </nav>
 
