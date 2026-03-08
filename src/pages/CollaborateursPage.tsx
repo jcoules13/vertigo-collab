@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Plus, Loader2, Edit2, UserCheck, UserX } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Plus, Loader2, Edit2, UserCheck, UserX, KeyRound, Check } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { Collaborateur } from '../types/database'
@@ -19,6 +19,10 @@ export default function CollaborateursPage() {
   const [formTelephone, setFormTelephone] = useState('')
   const [formRole, setFormRole] = useState<'admin' | 'membre_actif' | 'benevole'>('membre_actif')
   const [formPassword, setFormPassword] = useState('')
+  const [resetPasswordId, setResetPasswordId] = useState<string | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetting, setResetting] = useState(false)
+  const [resetSuccess, setResetSuccess] = useState(false)
 
   const fetchCollaborateurs = async () => {
     try {
@@ -139,6 +143,35 @@ export default function CollaborateursPage() {
     }
   }
 
+  const handleResetPassword = async (userId: string) => {
+    if (resetPassword.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères.')
+      return
+    }
+    setResetting(true)
+    setError('')
+    try {
+      const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
+      const res = await fetch(`${webhookUrl}/collab-reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, new_password: resetPassword }),
+      })
+      const result = await res.json()
+      if (!res.ok || result.success === false) throw new Error(result.error || 'Erreur lors de la réinitialisation')
+      setResetSuccess(true)
+      setTimeout(() => {
+        setResetPasswordId(null)
+        setResetPassword('')
+        setResetSuccess(false)
+      }, 2000)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setResetting(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -236,7 +269,8 @@ export default function CollaborateursPage() {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {collaborateurs.map(c => (
-                <tr key={c.id} className={!c.actif ? 'opacity-50' : ''}>
+                <React.Fragment key={c.id}>
+                <tr className={!c.actif ? 'opacity-50' : ''}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-bold">
@@ -259,6 +293,9 @@ export default function CollaborateursPage() {
                       <button onClick={() => startEdit(c)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Modifier">
                         <Edit2 className="w-4 h-4 text-gray-500" />
                       </button>
+                      <button onClick={() => { setResetPasswordId(resetPasswordId === c.id ? null : c.id); setResetPassword(''); setResetSuccess(false); setError('') }} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Réinitialiser le mot de passe">
+                        <KeyRound className="w-4 h-4 text-amber-500" />
+                      </button>
                       {!(c.actif && isProtected(c)) && (
                         <button onClick={() => toggleActif(c)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title={c.actif ? 'Désactiver' : 'Activer'}>
                           {c.actif ? <UserX className="w-4 h-4 text-red-500" /> : <UserCheck className="w-4 h-4 text-green-500" />}
@@ -267,6 +304,40 @@ export default function CollaborateursPage() {
                     </td>
                   )}
                 </tr>
+                {resetPasswordId === c.id && (
+                  <tr className="bg-amber-50 dark:bg-amber-900/20">
+                    <td colSpan={isAdmin ? 5 : 4} className="px-6 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Nouveau mot de passe pour {c.prenom} :</span>
+                        <input
+                          type="password"
+                          value={resetPassword}
+                          onChange={e => setResetPassword(e.target.value)}
+                          placeholder="Min. 6 caractères"
+                          minLength={6}
+                          className="input w-48"
+                          disabled={resetSuccess}
+                        />
+                        <button
+                          onClick={() => handleResetPassword(c.id)}
+                          disabled={resetting || resetSuccess || resetPassword.length < 6}
+                          className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-all ${
+                            resetSuccess ? 'bg-green-600' : 'bg-amber-600 hover:bg-amber-700 disabled:opacity-50'
+                          }`}
+                        >
+                          {resetting ? <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                           : resetSuccess ? <Check className="w-4 h-4 mr-1" />
+                           : null}
+                          {resetSuccess ? 'Modifié !' : 'Confirmer'}
+                        </button>
+                        <button onClick={() => { setResetPasswordId(null); setResetPassword(''); setError('') }} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                          Annuler
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
