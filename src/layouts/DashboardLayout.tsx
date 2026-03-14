@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Clock, Calendar, CalendarPlus, FolderOpen, FileCheck, User, Users,
-  BarChart3, LogOut, Menu, ExternalLink
+  BarChart3, LogOut, Menu, ExternalLink, Bot
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import ThemeToggle from '../components/ThemeToggle'
@@ -15,6 +15,7 @@ const navigation = [
   { name: 'Dossiers', href: '/dossiers', icon: FolderOpen },
   { name: 'MDPH', href: '/mdph', icon: FileCheck },
   { name: 'Suivi usager', href: '/suivi-mdph', icon: ExternalLink, external: true },
+  { name: 'Assistant Doc', href: '/doc', icon: Bot },
   { name: 'Profil', href: '/profil', icon: User },
 ] as const
 

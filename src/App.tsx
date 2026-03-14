@@ -19,6 +19,7 @@ import MdphFormPage from './pages/MdphFormPage'
 import ProfilPage from './pages/ProfilPage'
 import StatistiquesPage from './pages/StatistiquesPage'
 import SuiviMdphPage from './pages/SuiviMdphPage'
+import DocPage from './pages/DocPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, collaborateur, loading, refreshCollaborateur } = useAuth()
@@ -105,6 +106,7 @@ export default function App() {
               <Route path="mdph/:id" element={<MdphFormPage />} />
               <Route path="collaborateurs" element={<AdminRoute><CollaborateursPage /></AdminRoute>} />
               <Route path="statistiques" element={<AdminRoute><StatistiquesPage /></AdminRoute>} />
+              <Route path="doc" element={<DocPage />} />
               <Route path="profil" element={<ProfilPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
